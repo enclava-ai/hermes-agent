@@ -87,6 +87,10 @@ def create_dashboard_app(gateway_runner=None) -> "web.Application":
     app.router.add_post("/settings/general/save", handle_general_save)
     app.router.add_get("/settings/status", handle_status_tab)
 
+    # Platform configuration tab (Phase 3)
+    from .platforms import handle_platforms_tab
+    app.router.add_get("/settings/platforms", handle_platforms_tab)
+
     # Jinja2 templates
     templates_dir = Path(__file__).parent / "templates"
     aiohttp_jinja2.setup(app, loader=jinja2.FileSystemLoader(str(templates_dir)))
