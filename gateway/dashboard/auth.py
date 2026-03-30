@@ -193,9 +193,22 @@ async def auth_middleware(request: "web.Request", handler) -> "web.Response":
     """
     Redirect unauthenticated requests to /dashboard/login.
     Only active on the dashboard subapp — never on the main app.
+
+    Note: request.path is the full URL path (e.g. /dashboard/login) in both
+    standalone and subapp-mounted contexts. EXEMPT_PATHS stores short forms
+    (/login, /logout); we also check the path suffix after stripping one
+    prefix level so the middleware works whether the subapp is tested alone
+    or mounted under /dashboard/.
     """
-    # Paths relative to /dashboard/ mount point (Pitfall 5)
-    if request.path in EXEMPT_PATHS or any(request.path.startswith(p) for p in EXEMPT_PREFIXES):
+    # Strip one prefix level so /dashboard/login → /login when mounted
+    _stripped = request.path
+    parts = request.path.strip("/").split("/", 1)
+    if len(parts) == 2:
+        _stripped = "/" + parts[1]
+
+    if _stripped in EXEMPT_PATHS or request.path in EXEMPT_PATHS:
+        return await handler(request)
+    if any(_stripped.startswith(p) or request.path.startswith(p) for p in EXEMPT_PREFIXES):
         return await handler(request)
 
     token = request.cookies.get(SESSION_COOKIE)
@@ -220,7 +233,7 @@ async def handle_login(request: "web.Request") -> "web.Response":
     ip = request.remote or "unknown"
 
     if _is_locked_out(ip):
-        return await aiohttp_jinja2.render_template(
+        return aiohttp_jinja2.render_template(
             "login.html", request,
             {"error": "Too many failed attempts. Try again in 60 seconds.", "username": username}
         )
@@ -233,7 +246,7 @@ async def handle_login(request: "web.Request") -> "web.Response":
 
     if not stored_hash or username != stored_username or not verify_password(stored_hash, password):
         _record_failed(ip)
-        return await aiohttp_jinja2.render_template(
+        return aiohttp_jinja2.render_template(
             "login.html", request,
             {"error": "Invalid username or password.", "username": username}
         )
@@ -270,24 +283,24 @@ async def handle_change_password(request: "web.Request") -> "web.Response":
     confirm_password = data.get("confirm_password", "")
 
     if not username:
-        return await aiohttp_jinja2.render_template(
+        return aiohttp_jinja2.render_template(
             "change_password.html", request,
             {"error": "Username is required.", "username": username}
         )
     if len(new_password) < 8:
-        return await aiohttp_jinja2.render_template(
+        return aiohttp_jinja2.render_template(
             "change_password.html", request,
             {"error": "Password must be at least 8 characters.", "username": username}
         )
     if new_password != confirm_password:
-        return await aiohttp_jinja2.render_template(
+        return aiohttp_jinja2.render_template(
             "change_password.html", request,
             {"error": "Passwords do not match.", "username": username}
         )
 
     from hermes_cli.config import load_config, save_config, is_managed
     if is_managed():
-        return await aiohttp_jinja2.render_template(
+        return aiohttp_jinja2.render_template(
             "change_password.html", request,
             {"error": "This installation is managed. Password changes must be made through the configuration management system.", "username": username}
         )
