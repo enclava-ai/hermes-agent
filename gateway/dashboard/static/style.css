@@ -1,0 +1,19 @@
+/* Hermes Dashboard — overrides on top of Pico CSS */
+
+:root {
+    --color-primary: #6366f1; /* indigo */
+}
+
+.error-banner {
+    display: none;
+    background: var(--pico-color-red-500, #ef4444);
+    color: #fff;
+    padding: 0.5rem 1rem;
+    border-radius: var(--pico-border-radius);
+    margin-bottom: 1rem;
+}
+
+.login-card {
+    max-width: 400px;
+    margin: 10vh auto;
+}
