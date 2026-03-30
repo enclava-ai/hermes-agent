@@ -33,7 +33,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 Plans:
 - [x] 01-01-PLAN.md — Package scaffold, vendored HTMX/Pico CSS, Jinja2 templates
 - [x] 01-02-PLAN.md — Auth layer (Fernet sessions, argon2, middleware, login/logout/change-password handlers)
-- [ ] 01-03-PLAN.md — Gateway hook in api_server.py and integration tests
+- [x] 01-03-PLAN.md — Gateway hook in api_server.py and integration tests
 **UI hint**: yes
 
 ### Phase 2: Core Settings UI

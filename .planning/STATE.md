@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to execute
-stopped_at: Completed 01-foundation-and-auth 01-02-PLAN.md
-last_updated: "2026-03-30T10:04:07.973Z"
+status: Phase complete — ready for verification
+stopped_at: Completed 01-foundation-and-auth 01-03-PLAN.md
+last_updated: "2026-03-30T10:16:38.214Z"
 progress:
   total_phases: 4
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
-  completed_plans: 2
+  completed_plans: 3
 ---
 
 # Project State
@@ -48,6 +48,7 @@ Plan: 3 of 3
 *Updated after each plan completion*
 | Phase 01-foundation-and-auth P01 | 12 | 3 tasks | 10 files |
 | Phase 01-foundation-and-auth P02 | 15 | 2 tasks | 5 files |
+| Phase 01-foundation-and-auth P03 | 18 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -64,6 +65,9 @@ Recent decisions affecting current work:
 - [Phase 01-foundation-and-auth]: HTMX error handler registered globally in base.html from day 1 — retrofitting later means early interactions had silent failures
 - [Phase 01-foundation-and-auth]: verify_session_token uses Fernet's built-in ttl= parameter — TTL enforced cryptographically, not by JSON timestamp check
 - [Phase 01-foundation-and-auth]: redact_secret() is browser-safe standalone function — does not call hermes_cli.config.redact_key() which embeds ANSI codes
+- [Phase 01-foundation-and-auth]: render_template() in aiohttp-jinja2 is synchronous — must NOT be awaited; all call sites in auth.py fixed
+- [Phase 01-foundation-and-auth]: auth_middleware strips one prefix level from request.path to match EXEMPT_PATHS in both standalone and subapp-mounted contexts
+- [Phase 01-foundation-and-auth]: Integration tests use on_startup.clear() + inject_fernet hook to avoid touching real config.yaml and .env files
 
 ### Pending Todos
 
@@ -76,6 +80,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-30T10:04:07.971Z
-Stopped at: Completed 01-foundation-and-auth 01-02-PLAN.md
+Last session: 2026-03-30T10:16:38.211Z
+Stopped at: Completed 01-foundation-and-auth 01-03-PLAN.md
 Resume file: None
