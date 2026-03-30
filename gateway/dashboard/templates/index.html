@@ -16,11 +16,29 @@
     </ul>
 </nav>
 
-<h2>Welcome</h2>
-<p>Dashboard is running. Configuration UI will be added in Phase 2.</p>
+<nav>
+    <ul role="tablist">
+        <li><a href="#" class="active" hx-get="/dashboard/settings/llm" hx-target="#tab-content" hx-swap="innerHTML">LLM</a></li>
+        <li><a href="#" hx-get="/dashboard/settings/general" hx-target="#tab-content" hx-swap="innerHTML">General</a></li>
+        <li><a href="#" hx-get="/dashboard/settings/status" hx-target="#tab-content" hx-swap="innerHTML">Status</a></li>
+    </ul>
+</nav>
 
-<section>
-    <h3>Status</h3>
-    <p>Gateway is online.</p>
-</section>
+<span id="tab-loading" class="htmx-indicator">Loading...</span>
+
+<div id="tab-content"
+     hx-get="/dashboard/settings/llm"
+     hx-trigger="load"
+     hx-indicator="#tab-loading">
+</div>
+
+<script>
+// Tab active-state toggling
+document.querySelector('[role="tablist"]').addEventListener('click', function(e) {
+    var link = e.target.closest('a');
+    if (!link) return;
+    this.querySelectorAll('a').forEach(function(a) { a.classList.remove('active'); });
+    link.classList.add('active');
+});
+</script>
 {% endblock %}

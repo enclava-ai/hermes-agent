@@ -1,0 +1,7 @@
+{% if flash %}
+{% set flash_type = flash.split(":")[0] %}
+{% set flash_msg = flash.split(":", 1)[1] %}
+<div class="flash flash-{{ flash_type }}" role="alert">
+  {{ flash_msg }}
+</div>
+{% endif %}
