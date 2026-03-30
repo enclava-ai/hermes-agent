@@ -22,9 +22,9 @@ Users can fully configure and onboard Hermes Agent through a browser without tou
 
 ### Active
 
-- [ ] Web dashboard served from the existing gateway process
-- [ ] Username/password authentication for dashboard access
-- [ ] First-run onboarding wizard (step-by-step initial setup)
+- [x] Web dashboard served from the existing gateway process — Validated in Phase 1: Foundation and Auth
+- [x] Username/password authentication for dashboard access — Validated in Phase 1: Foundation and Auth
+- [x] First-run onboarding wizard (step-by-step initial setup) — Validated in Phase 4: Onboarding Wizard
 - [x] Platform connection configuration (Discord, Telegram, Slack, etc.) — Validated in Phase 3: Platforms and Skills
 - [x] LLM provider configuration (model, API keys, system prompt, temperature) — Validated in Phase 2: Core Settings UI
 - [x] Plugin/skills enable/disable and configuration — Validated in Phase 3: Platforms and Skills
@@ -84,4 +84,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-30 after Phase 3 completion*
+*Last updated: 2026-03-30 after Phase 4 completion — all v1 requirements validated*
