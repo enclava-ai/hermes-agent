@@ -1,0 +1,60 @@
+{% include "settings/_flash.html" %}
+
+<h3>Step 2: Platform Connection</h3>
+<p>Set up at least one messaging platform. Test the connection before continuing.</p>
+
+<div class="card-grid">
+  {% for platform in platforms %}
+  <article class="platform-card {% if platform.id == selected_platform and platform_test_passed %}platform-configured{% endif %}" id="wiz-card-{{ platform.id }}">
+    <details {% if platform.id == selected_platform %}open{% endif %}>
+      <summary>
+        <span class="platform-name">{{ platform.display_name }}</span>
+        {% if platform.id == selected_platform and platform_test_passed %}
+        <span class="badge badge-success">Test passed</span>
+        {% endif %}
+      </summary>
+      <form id="wiz-platform-{{ platform.id }}">
+        {% for field in platform.fields %}
+        <label for="wiz-{{ field.name }}">{{ field.label }}{% if field.required %} *{% endif %}</label>
+        {% if field.type == "password" %}
+        <input type="password" name="{{ field.name }}" id="wiz-{{ field.name }}"
+               placeholder="{{ field.value if field.value else '' }}">
+        {% else %}
+        <input type="text" name="{{ field.name }}" id="wiz-{{ field.name }}"
+               value="{{ field.value }}">
+        {% endif %}
+        <small>{{ field.help }}{% if field.help_url %} <a href="{{ field.help_url }}" target="_blank" rel="noopener">docs</a>{% endif %}</small>
+        {% endfor %}
+        <div class="platform-actions">
+          {% if platform.test_supported %}
+          <button type="button" class="secondary outline"
+                  hx-post="/dashboard/wizard/test/{{ platform.id }}"
+                  hx-target="#wizard-step-content"
+                  hx-swap="innerHTML"
+                  hx-select="#wizard-step-content"
+                  hx-select-oob="#wizard-step-bar"
+                  hx-include="closest form">
+            Test Connection
+          </button>
+          {% endif %}
+        </div>
+      </form>
+    </details>
+  </article>
+  {% endfor %}
+</div>
+
+<div style="display:flex;gap:0.5rem;">
+  <button class="secondary outline"
+          hx-get="/dashboard/wizard/step/1"
+          hx-target="#wizard-step-content"
+          hx-swap="innerHTML"
+          hx-select="#wizard-step-content"
+          hx-select-oob="#wizard-step-bar">
+    Back
+  </button>
+  <form style="margin:0" hx-post="/dashboard/wizard/step/2" hx-target="#wizard-step-content" hx-swap="innerHTML"
+        hx-select="#wizard-step-content" hx-select-oob="#wizard-step-bar">
+    <button type="submit">Next: Summary</button>
+  </form>
+</div>

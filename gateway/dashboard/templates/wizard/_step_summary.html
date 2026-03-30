@@ -1,0 +1,34 @@
+<h3>Step 3: Summary</h3>
+<p>Review your configuration before completing setup.</p>
+
+<article>
+  <header><strong>LLM Configuration</strong></header>
+  <dl>
+    <dt>Provider</dt><dd>{{ llm_provider or "Not set" }}</dd>
+    <dt>Model</dt><dd>{{ llm_model or "Not set" }}</dd>
+    {% if llm_temperature %}<dt>Temperature</dt><dd>{{ llm_temperature }}</dd>{% endif %}
+    {% if llm_max_tokens %}<dt>Max Tokens</dt><dd>{{ llm_max_tokens }}</dd>{% endif %}
+  </dl>
+</article>
+
+<article>
+  <header><strong>Platform Connection</strong></header>
+  <dl>
+    <dt>Platform</dt><dd>{{ platform_name or "None selected" }}</dd>
+    <dt>Connection Test</dt><dd>{% if platform_test_passed %}Passed{% else %}Not tested{% endif %}</dd>
+  </dl>
+</article>
+
+<div style="display:flex;gap:0.5rem;">
+  <button class="secondary outline"
+          hx-get="/dashboard/wizard/step/2"
+          hx-target="#wizard-step-content"
+          hx-swap="innerHTML"
+          hx-select="#wizard-step-content"
+          hx-select-oob="#wizard-step-bar">
+    Back
+  </button>
+  <form style="margin:0" hx-post="/dashboard/wizard/complete" hx-target="body">
+    <button type="submit">Complete Setup</button>
+  </form>
+</div>

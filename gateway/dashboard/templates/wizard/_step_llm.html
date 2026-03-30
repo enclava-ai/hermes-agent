@@ -1,0 +1,68 @@
+{% include "settings/_flash.html" %}
+
+<h3>Step 1: LLM Provider</h3>
+<p>Configure your AI model provider and API key.</p>
+
+<form hx-post="/dashboard/wizard/step/1" hx-target="#wizard-step-content" hx-swap="innerHTML"
+      hx-select="#wizard-step-content" hx-select-oob="#wizard-step-bar">
+  <div class="grid">
+    <label>
+      Provider
+      <select name="provider" id="wizard-llm-provider">
+        {% for p in providers %}
+        <option value="{{ p.name }}" {% if p.name == provider %}selected{% endif %}
+                data-auth-type="{{ p.auth_type }}"
+                data-env-var="{{ p.env_var }}">
+          {{ p.display_name }}
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      Model Name
+      <input type="text" name="model_name" value="{{ model_name }}"
+             placeholder="e.g. gpt-4o">
+    </label>
+  </div>
+
+  <div id="wizard-api-key-section">
+    <label>
+      API Key
+      <input type="text" name="api_key" value="{{ api_key_display }}"
+             placeholder="Enter API key" autocomplete="off">
+      <small>Stored in <code>{{ api_key_env_var }}</code></small>
+    </label>
+    <input type="hidden" name="api_key_env_var" value="{{ api_key_env_var }}">
+  </div>
+
+  <div class="grid">
+    <label>
+      Temperature
+      <input type="number" name="temperature" value="{{ temperature }}"
+             min="0" max="2" step="0.1" placeholder="0.7">
+    </label>
+    <label>
+      Max Tokens
+      <input type="number" name="max_tokens" value="{{ max_tokens }}"
+             min="1" max="1000000" step="1" placeholder="4096">
+    </label>
+  </div>
+
+  <button type="submit">Next: Platform Setup</button>
+</form>
+
+<script>
+(function() {
+    var select = document.getElementById('wizard-llm-provider');
+    if (!select) return;
+    var keySection = document.getElementById('wizard-api-key-section');
+    var keyEnvInput = keySection.querySelector('input[name="api_key_env_var"]');
+    function updateKeySection() {
+        var opt = select.options[select.selectedIndex];
+        keyEnvInput.value = opt.getAttribute('data-env-var') || '';
+        keySection.style.display = (opt.getAttribute('data-auth-type') === 'api_key') ? '' : 'none';
+    }
+    select.addEventListener('change', updateKeySection);
+    updateKeySection();
+})();
+</script>

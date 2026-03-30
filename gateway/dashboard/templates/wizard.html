@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Setup Wizard -- Hermes{% endblock %}
+{% block content %}
+<h2>Hermes Setup</h2>
+
+<div id="wizard-step-bar">
+  {% include "wizard/_step_bar.html" %}
+</div>
+
+<div id="wizard-step-content">
+  {% include step_template %}
+</div>
+{% endblock %}
