@@ -1,0 +1,102 @@
+{% include "settings/_flash.html" %}
+
+{% if managed %}
+<article class="managed-banner">
+  Configuration is managed by NixOS/Enclava. Changes must be made through your system configuration.
+</article>
+{% endif %}
+
+<h3>LLM Provider</h3>
+<form hx-post="/dashboard/settings/llm/save" hx-target="#tab-content" hx-swap="innerHTML">
+  <div class="grid">
+    <label>
+      Provider
+      <select name="provider" id="llm-provider" {% if managed %}disabled{% endif %}>
+        {% for p in providers %}
+        <option value="{{ p.name }}" {% if p.name == provider %}selected{% endif %}
+                data-auth-type="{{ p.auth_type }}"
+                data-env-var="{{ p.env_var }}">
+          {{ p.display_name }}
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      Model Name
+      <input type="text" name="model_name" value="{{ model_name }}"
+             placeholder="e.g. claude-opus-4.6" {% if managed %}disabled{% endif %}>
+    </label>
+  </div>
+
+  <!-- API Key section — only for api_key auth type providers -->
+  <div id="api-key-section">
+    <label>
+      API Key
+      <input type="text" name="api_key" value="{{ api_key_display }}"
+             placeholder="Enter API key" {% if managed %}disabled{% endif %}
+             autocomplete="off">
+      <small>Leave unchanged to keep current key. Stored in <code>{{ api_key_env_var }}</code></small>
+    </label>
+    <input type="hidden" name="api_key_env_var" value="{{ api_key_env_var }}">
+  </div>
+
+  <div class="grid">
+    <label>
+      Temperature
+      <input type="number" name="temperature" value="{{ temperature }}"
+             min="0" max="2" step="0.1" placeholder="0.7"
+             {% if managed %}disabled{% endif %}>
+    </label>
+    <label>
+      Max Tokens
+      <input type="number" name="max_tokens" value="{{ max_tokens }}"
+             min="1" max="1000000" step="1" placeholder="4096"
+             {% if managed %}disabled{% endif %}>
+    </label>
+  </div>
+
+  <button type="submit" {% if managed %}disabled{% endif %}>Save LLM Settings</button>
+</form>
+
+<hr>
+
+<h3>System Prompt / Persona</h3>
+<form hx-post="/dashboard/settings/soul/save" hx-target="#tab-content" hx-swap="innerHTML">
+  <label>
+    SOUL.md
+    <textarea name="soul_content" rows="12" {% if managed %}disabled{% endif %}
+              placeholder="Enter system prompt / persona...">{{ soul_content }}</textarea>
+    <small>Content of <code>~/.hermes/SOUL.md</code> — injected into every conversation.</small>
+  </label>
+  <button type="submit" {% if managed %}disabled{% endif %}>Save System Prompt</button>
+</form>
+
+<script>
+(function() {
+    var select = document.getElementById('llm-provider');
+    if (!select) return;
+
+    var keySection = document.getElementById('api-key-section');
+    var keyEnvInput = keySection.querySelector('input[name="api_key_env_var"]');
+
+    function updateKeySection() {
+        var opt = select.options[select.selectedIndex];
+        var authType = opt.getAttribute('data-auth-type');
+        var envVar = opt.getAttribute('data-env-var');
+
+        keyEnvInput.value = envVar || '';
+
+        if (authType === 'api_key') {
+            keySection.style.display = '';
+            var note = keySection.querySelector('.oauth-note');
+            if (note) note.remove();
+        } else {
+            keySection.style.display = 'none';
+        }
+    }
+
+    select.addEventListener('change', updateKeySection);
+    // Run on load to set initial state
+    updateKeySection();
+})();
+</script>
