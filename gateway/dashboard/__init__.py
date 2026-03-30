@@ -91,6 +91,11 @@ def create_dashboard_app(gateway_runner=None) -> "web.Application":
     from .platforms import handle_platforms_tab
     app.router.add_get("/settings/platforms", handle_platforms_tab)
 
+    # Skills management tab (Phase 3)
+    from .skills import handle_skills_tab, handle_skill_toggle
+    app.router.add_get("/settings/skills", handle_skills_tab)
+    app.router.add_post("/settings/skills/{skill_name}/toggle", handle_skill_toggle)
+
     # Jinja2 templates
     templates_dir = Path(__file__).parent / "templates"
     aiohttp_jinja2.setup(app, loader=jinja2.FileSystemLoader(str(templates_dir)))
