@@ -1,0 +1,57 @@
+{% include "settings/_flash.html" %}
+
+{% if managed %}
+<article class="managed-banner">
+  Configuration is managed by NixOS/Enclava. Changes must be made through your system configuration.
+</article>
+{% endif %}
+
+<h3>Agent Settings</h3>
+<form hx-post="/dashboard/settings/general/save" hx-target="#tab-content" hx-swap="innerHTML">
+
+  <fieldset>
+    <label>
+      <input type="checkbox" name="memory_enabled" {% if memory_enabled %}checked{% endif %}
+             {% if managed %}disabled{% endif %} role="switch">
+      Memory
+    </label>
+    <label>
+      <input type="checkbox" name="streaming" {% if streaming %}checked{% endif %}
+             {% if managed %}disabled{% endif %} role="switch">
+      Streaming
+    </label>
+    <label>
+      <input type="checkbox" name="compression_enabled" {% if compression_enabled %}checked{% endif %}
+             {% if managed %}disabled{% endif %} role="switch">
+      Context Compression
+    </label>
+  </fieldset>
+
+  <label>
+    Compression Threshold
+    <input type="number" name="compression_threshold" value="{{ compression_threshold }}"
+           min="0.1" max="1.0" step="0.05" {% if managed %}disabled{% endif %}>
+    <small>Compress when context usage exceeds this ratio (0.0 - 1.0)</small>
+  </label>
+
+  <label>
+    Display Skin
+    <input type="text" name="skin" value="{{ skin }}" placeholder="default"
+           {% if managed %}disabled{% endif %}>
+  </label>
+
+  <hr>
+
+  <h4>Toolsets</h4>
+  <fieldset>
+    {% for ts in all_toolsets %}
+    <label>
+      <input type="checkbox" name="toolset_{{ ts.name }}" {% if ts.enabled %}checked{% endif %}
+             {% if managed %}disabled{% endif %}>
+      {{ ts.name }}
+    </label>
+    {% endfor %}
+  </fieldset>
+
+  <button type="submit" {% if managed %}disabled{% endif %}>Save General Settings</button>
+</form>

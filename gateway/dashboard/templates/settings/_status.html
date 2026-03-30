@@ -1,0 +1,50 @@
+<div hx-get="/dashboard/settings/status" hx-trigger="every 30s" hx-swap="outerHTML">
+
+<h3>Status Overview</h3>
+
+<table role="grid">
+  <tbody>
+    <tr>
+      <th>Current Model</th>
+      <td>{{ model }}</td>
+    </tr>
+    <tr>
+      <th>Gateway</th>
+      <td>{% if gateway_running %}Running{% else %}Not running{% endif %}</td>
+    </tr>
+  </tbody>
+</table>
+
+<h4>Platform Adapters</h4>
+{% if platforms %}
+<table role="grid">
+  <thead>
+    <tr>
+      <th>Platform</th>
+      <th>Status</th>
+      <th>Details</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for p in platforms %}
+    <tr>
+      <td>{{ p.name }}</td>
+      <td>
+        {% if p.has_error %}
+          <mark>Error</mark>
+        {% elif p.connected %}
+          Connected
+        {% else %}
+          Disconnected
+        {% endif %}
+      </td>
+      <td>{{ p.error or "" }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p>No platform adapters configured.</p>
+{% endif %}
+
+</div>

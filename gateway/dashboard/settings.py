@@ -1,10 +1,13 @@
 """
-Dashboard settings handlers — LLM configuration and system prompt (SOUL.md).
+Dashboard settings handlers — LLM, General, and Status tabs.
 
 Provides GET/POST handlers for:
 - /settings/llm — provider, API key, model, temperature, max tokens
 - /settings/llm/save — persist LLM config to config.yaml and .env
 - /settings/soul/save — persist SOUL.md content
+- /settings/general — memory, streaming, compression toggles + toolset checkboxes
+- /settings/general/save — persist general settings to config.yaml
+- /settings/status — read-only status overview (model, gateway, platforms)
 
 All hermes_cli imports are deferred inside function bodies to avoid
 import-time failures when the CLI package is unavailable.
@@ -172,3 +175,128 @@ async def handle_soul_save(request: "web.Request") -> "web.Response":
     write_soul_md(soul_content)
 
     return _render_llm(request, flash="success:System prompt saved.")
+
+
+# --- General settings handlers ---
+
+async def handle_general_tab(request: "web.Request") -> "web.Response":
+    """GET /settings/general — render the General configuration tab."""
+    from hermes_cli.config import load_config, is_managed
+    from toolsets import get_all_toolsets
+
+    config = load_config()
+
+    memory_enabled = config.get("memory", {}).get("memory_enabled", True)
+    streaming = config.get("display", {}).get("streaming", False)
+    compression_enabled = config.get("compression", {}).get("enabled", True)
+    compression_threshold = config.get("compression", {}).get("threshold", 0.50)
+    skin = config.get("display", {}).get("skin", "default")
+    current_toolsets = config.get("toolsets", ["hermes-cli"])
+
+    all_toolsets = get_all_toolsets()
+    toolset_list = [
+        {"name": name, "enabled": name in current_toolsets}
+        for name in sorted(all_toolsets)
+    ]
+
+    managed = is_managed()
+
+    context = {
+        "memory_enabled": memory_enabled,
+        "streaming": streaming,
+        "compression_enabled": compression_enabled,
+        "compression_threshold": compression_threshold,
+        "skin": skin,
+        "all_toolsets": toolset_list,
+        "managed": managed,
+        "flash": None,
+    }
+
+    return aiohttp_jinja2.render_template("settings/_general.html", request, context)
+
+
+async def handle_general_save(request: "web.Request") -> "web.Response":
+    """POST /settings/general/save — persist general settings."""
+    from hermes_cli.config import load_config, save_config, is_managed
+    from toolsets import get_all_toolsets
+
+    if is_managed():
+        return aiohttp_jinja2.render_template(
+            "settings/_general.html",
+            request,
+            {"flash": "error:Configuration is managed by NixOS/Enclava.", "managed": True,
+             "memory_enabled": True, "streaming": False, "compression_enabled": True,
+             "compression_threshold": 0.50, "skin": "default", "all_toolsets": []},
+        )
+
+    data = await request.post()
+
+    async with request.app["config_lock"]:
+        config = load_config()
+
+        config.setdefault("memory", {})["memory_enabled"] = "memory_enabled" in data
+        config.setdefault("display", {})["streaming"] = "streaming" in data
+        config.setdefault("compression", {})["enabled"] = "compression_enabled" in data
+
+        threshold = data.get("compression_threshold", "").strip()
+        if threshold:
+            try:
+                config.setdefault("compression", {})["threshold"] = float(threshold)
+            except ValueError:
+                logger.debug("Invalid compression threshold: %s", threshold)
+
+        config.setdefault("display", {})["skin"] = data.get("skin", "default").strip()
+
+        all_toolsets = get_all_toolsets()
+        enabled = [name for name in all_toolsets if data.get(f"toolset_{name}")]
+        config["toolsets"] = enabled
+
+        save_config(config)
+
+    # Re-render with updated values
+    current_toolsets = config.get("toolsets", [])
+    toolset_list = [
+        {"name": name, "enabled": name in current_toolsets}
+        for name in sorted(all_toolsets)
+    ]
+
+    context = {
+        "memory_enabled": config.get("memory", {}).get("memory_enabled", True),
+        "streaming": config.get("display", {}).get("streaming", False),
+        "compression_enabled": config.get("compression", {}).get("enabled", True),
+        "compression_threshold": config.get("compression", {}).get("threshold", 0.50),
+        "skin": config.get("display", {}).get("skin", "default"),
+        "all_toolsets": toolset_list,
+        "managed": False,
+        "flash": "success:General settings saved.",
+    }
+
+    return aiohttp_jinja2.render_template("settings/_general.html", request, context)
+
+
+# --- Status tab handler ---
+
+async def handle_status_tab(request: "web.Request") -> "web.Response":
+    """GET /settings/status — read-only status overview with HTMX polling."""
+    from hermes_cli.config import load_config
+
+    config = load_config()
+    runner = request.app.get("gateway_runner")
+
+    platforms_status = []
+    if runner is not None and hasattr(runner, "adapters"):
+        for platform, adapter in runner.adapters.items():
+            platforms_status.append({
+                "name": platform.value,
+                "connected": adapter.is_connected,
+                "has_error": adapter.has_fatal_error,
+                "error": adapter.fatal_error_message,
+            })
+
+    context = {
+        "model": config.get("model", "not configured"),
+        "platforms": platforms_status,
+        "gateway_running": runner is not None,
+    }
+
+    return aiohttp_jinja2.render_template("settings/_status.html", request, context)

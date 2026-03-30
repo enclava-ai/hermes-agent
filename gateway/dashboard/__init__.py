@@ -76,10 +76,16 @@ def create_dashboard_app(gateway_runner=None) -> "web.Application":
         handle_llm_tab,
         handle_llm_save,
         handle_soul_save,
+        handle_general_tab,
+        handle_general_save,
+        handle_status_tab,
     )
     app.router.add_get("/settings/llm", handle_llm_tab)
     app.router.add_post("/settings/llm/save", handle_llm_save)
     app.router.add_post("/settings/soul/save", handle_soul_save)
+    app.router.add_get("/settings/general", handle_general_tab)
+    app.router.add_post("/settings/general/save", handle_general_save)
+    app.router.add_get("/settings/status", handle_status_tab)
 
     # Jinja2 templates
     templates_dir = Path(__file__).parent / "templates"
