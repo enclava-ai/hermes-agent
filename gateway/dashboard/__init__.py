@@ -98,6 +98,19 @@ def create_dashboard_app(gateway_runner=None) -> "web.Application":
     app.router.add_get("/settings/skills", handle_skills_tab)
     app.router.add_post("/settings/skills/{skill_name}/toggle", handle_skill_toggle)
 
+    # Onboarding wizard (Phase 4)
+    from .wizard import (
+        handle_wizard,
+        handle_wizard_step,
+        handle_wizard_test,
+        handle_wizard_complete,
+    )
+    app.router.add_get("/wizard", handle_wizard)
+    app.router.add_get("/wizard/step/{n}", handle_wizard_step)
+    app.router.add_post("/wizard/step/{n}", handle_wizard_step)
+    app.router.add_post("/wizard/test/{platform}", handle_wizard_test)
+    app.router.add_post("/wizard/complete", handle_wizard_complete)
+
     # Jinja2 templates
     templates_dir = Path(__file__).parent / "templates"
     aiohttp_jinja2.setup(app, loader=jinja2.FileSystemLoader(str(templates_dir)))
