@@ -22,10 +22,22 @@
       {% endfor %}
       <div class="platform-actions">
         {% if platform.test_supported and not managed %}
-        <button type="button" class="secondary outline" disabled title="Available after save handler is wired">Test Connection</button>
+        <button type="button" class="secondary outline"
+                hx-post="/dashboard/settings/platforms/{{ platform.id }}/test"
+                hx-target="#tab-content"
+                hx-swap="innerHTML"
+                hx-include="closest form">
+          Test Connection
+        </button>
         {% endif %}
         {% if not managed %}
-        <button type="submit" disabled title="Available after save handler is wired">Save</button>
+        <button type="button"
+                hx-post="/dashboard/settings/platforms/{{ platform.id }}/save"
+                hx-target="#tab-content"
+                hx-swap="innerHTML"
+                hx-include="closest form">
+          Save
+        </button>
         {% endif %}
       </div>
     </form>
