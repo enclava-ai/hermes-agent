@@ -1,0 +1,33 @@
+<article class="platform-card {% if platform.configured %}platform-configured{% endif %}" id="card-{{ platform.id }}">
+  <details>
+    <summary>
+      <span class="platform-name">{{ platform.display_name }}</span>
+      <span class="badge {% if platform.configured %}badge-success{% else %}badge-muted{% endif %}">
+        {{ "Configured" if platform.configured else "Not configured" }}
+      </span>
+    </summary>
+    <form id="platform-{{ platform.id }}">
+      {% for field in platform.fields %}
+      <label for="{{ field.name }}">{{ field.label }}{% if field.required %} *{% endif %}</label>
+      {% if field.type == "password" %}
+      <input type="password" name="{{ field.name }}" id="{{ field.name }}"
+             placeholder="{{ field.value if field.value else '' }}"
+             {% if managed %}disabled{% endif %}>
+      {% else %}
+      <input type="text" name="{{ field.name }}" id="{{ field.name }}"
+             value="{{ field.value }}"
+             {% if managed %}disabled{% endif %}>
+      {% endif %}
+      <small>{{ field.help }}{% if field.help_url %} <a href="{{ field.help_url }}" target="_blank" rel="noopener">docs</a>{% endif %}</small>
+      {% endfor %}
+      <div class="platform-actions">
+        {% if platform.test_supported and not managed %}
+        <button type="button" class="secondary outline" disabled title="Available after save handler is wired">Test Connection</button>
+        {% endif %}
+        {% if not managed %}
+        <button type="submit" disabled title="Available after save handler is wired">Save</button>
+        {% endif %}
+      </div>
+    </form>
+  </details>
+</article>

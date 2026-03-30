@@ -1,0 +1,19 @@
+{% if flash %}
+{% include "settings/_flash.html" %}
+{% endif %}
+
+{% if managed %}
+<article class="managed-banner">
+  Configuration is managed by NixOS/Enclava. Platform settings are read-only.
+</article>
+{% endif %}
+
+<div class="card-grid">
+  {% for platform in platforms %}
+  {% include "settings/_platform_card.html" %}
+  {% endfor %}
+</div>
+
+{% if not platforms %}
+<p>No configurable platforms found.</p>
+{% endif %}
