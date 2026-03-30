@@ -46,7 +46,10 @@ Plans:
   3. User can toggle memory, streaming, and compression settings and see them saved
   4. Status overview shows which platforms are connected, the current model, and a health indicator
   5. Attempting to save config on a managed (NixOS/Enclava) install displays a clear error instead of silently failing
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 02-01-PLAN.md — Tabbed settings shell, LLM config tab (provider, API key, model params, SOUL.md)
+- [ ] 02-02-PLAN.md — General settings tab, Status overview tab, integration tests
 **UI hint**: yes
 
 ### Phase 3: Platforms and Skills
@@ -80,7 +83,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation and Auth | 1/3 | In Progress|  |
-| 2. Core Settings UI | 0/? | Not started | - |
+| 1. Foundation and Auth | 3/3 | Complete |  |
+| 2. Core Settings UI | 0/2 | Not started | - |
 | 3. Platforms and Skills | 0/? | Not started | - |
 | 4. Onboarding Wizard | 0/? | Not started | - |
