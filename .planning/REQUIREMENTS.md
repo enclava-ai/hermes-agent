@@ -17,29 +17,29 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### LLM Configuration
 
-- [ ] **LLM-01**: User can select and configure the LLM provider (OpenAI, Anthropic, OpenRouter, local, etc.)
-- [ ] **LLM-02**: User can set API keys for the selected provider (stored securely, displayed redacted)
-- [ ] **LLM-03**: User can configure model parameters (model name, temperature, max tokens)
-- [ ] **LLM-04**: User can edit the system prompt / persona
+- [x] **LLM-01**: User can select and configure the LLM provider (OpenAI, Anthropic, OpenRouter, local, etc.)
+- [x] **LLM-02**: User can set API keys for the selected provider (stored securely, displayed redacted)
+- [x] **LLM-03**: User can configure model parameters (model name, temperature, max tokens)
+- [x] **LLM-04**: User can edit the system prompt / persona
 
 ### Platform Management
 
-- [ ] **PLAT-01**: User can configure connection settings for each of the 13+ platform adapters
-- [ ] **PLAT-02**: User can test a platform connection before saving (backend-proxied API call)
-- [ ] **PLAT-03**: Each platform has a dedicated form with fields relevant to that adapter (tokens, chat IDs, webhook URLs, etc.)
-- [ ] **PLAT-04**: User can see which platforms are currently configured and their connection status
+- [x] **PLAT-01**: User can configure connection settings for each of the 13+ platform adapters
+- [x] **PLAT-02**: User can test a platform connection before saving (backend-proxied API call)
+- [x] **PLAT-03**: Each platform has a dedicated form with fields relevant to that adapter (tokens, chat IDs, webhook URLs, etc.)
+- [x] **PLAT-04**: User can see which platforms are currently configured and their connection status
 
 ### Skills Management
 
-- [ ] **SKIL-01**: User can view all installed skills with name, description, and category
-- [ ] **SKIL-02**: User can enable or disable individual skills
-- [ ] **SKIL-03**: User can edit skill-specific configuration settings where applicable
+- [x] **SKIL-01**: User can view all installed skills with name, description, and category
+- [x] **SKIL-02**: User can enable or disable individual skills
+- [x] **SKIL-03**: User can edit skill-specific configuration settings where applicable
 
 ### General Settings
 
-- [ ] **GENL-01**: User can edit general agent settings (memory, compression, streaming, session reset, etc.)
-- [ ] **GENL-02**: User can view a status overview (connected platforms, health check, active session count)
-- [ ] **GENL-03**: User can configure toolset availability (which tools are enabled per platform)
+- [x] **GENL-01**: User can edit general agent settings (memory, compression, streaming, session reset, etc.)
+- [x] **GENL-02**: User can view a status overview (connected platforms, health check, active session count)
+- [x] **GENL-03**: User can configure toolset availability (which tools are enabled per platform)
 
 ### Onboarding Wizard
 
@@ -91,20 +91,20 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AUTH-03 | Phase 1 | Complete |
 | AUTH-04 | Phase 1 | Complete |
 | AUTH-05 | Phase 1 | Complete |
-| LLM-01 | Phase 2 | Pending |
-| LLM-02 | Phase 2 | Pending |
-| LLM-03 | Phase 2 | Pending |
-| LLM-04 | Phase 2 | Pending |
-| PLAT-01 | Phase 3 | Pending |
-| PLAT-02 | Phase 3 | Pending |
-| PLAT-03 | Phase 3 | Pending |
-| PLAT-04 | Phase 3 | Pending |
-| SKIL-01 | Phase 3 | Pending |
-| SKIL-02 | Phase 3 | Pending |
-| SKIL-03 | Phase 3 | Pending |
-| GENL-01 | Phase 2 | Pending |
-| GENL-02 | Phase 2 | Pending |
-| GENL-03 | Phase 2 | Pending |
+| LLM-01 | Phase 2 | Complete |
+| LLM-02 | Phase 2 | Complete |
+| LLM-03 | Phase 2 | Complete |
+| LLM-04 | Phase 2 | Complete |
+| PLAT-01 | Phase 3 | Complete |
+| PLAT-02 | Phase 3 | Complete |
+| PLAT-03 | Phase 3 | Complete |
+| PLAT-04 | Phase 3 | Complete |
+| SKIL-01 | Phase 3 | Complete |
+| SKIL-02 | Phase 3 | Complete |
+| SKIL-03 | Phase 3 | Complete |
+| GENL-01 | Phase 2 | Complete |
+| GENL-02 | Phase 2 | Complete |
+| GENL-03 | Phase 2 | Complete |
 | WIZD-01 | Phase 4 | Pending |
 | WIZD-02 | Phase 4 | Pending |
 | WIZD-03 | Phase 4 | Pending |

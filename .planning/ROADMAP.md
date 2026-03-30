@@ -61,7 +61,12 @@ Plans:
   2. User can fill in credentials for Telegram, Discord, or Slack and click "Test Connection" — the dashboard shows success or an error message (the call goes through the Python backend, not the browser)
   3. User can save platform credentials and see the platform marked as configured; secrets are displayed redacted
   4. User can browse all installed skills by name and category, and toggle any skill on or off — the change persists to config.yaml
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [x] 03-01-PLAN.md — Platform schema, tab handler, card grid UI
+- [x] 03-02-PLAN.md — Test connection + save handlers, HTMX wiring
+- [x] 03-03-PLAN.md — Skills tab with card grid, toggle, category grouping
+- [ ] 03-04-PLAN.md — Integration tests for all platform and skill endpoints
 **UI hint**: yes
 
 ### Phase 4: Onboarding Wizard
@@ -85,5 +90,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Foundation and Auth | 3/3 | Complete |  |
 | 2. Core Settings UI | 0/2 | Planned    |  |
-| 3. Platforms and Skills | 0/? | Not started | - |
+| 3. Platforms and Skills | 0/4 | Planned | - |
 | 4. Onboarding Wizard | 0/? | Not started | - |
