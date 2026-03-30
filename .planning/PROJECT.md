@@ -26,11 +26,11 @@ Users can fully configure and onboard Hermes Agent through a browser without tou
 - [ ] Username/password authentication for dashboard access
 - [ ] First-run onboarding wizard (step-by-step initial setup)
 - [ ] Platform connection configuration (Discord, Telegram, Slack, etc.)
-- [ ] LLM provider configuration (model, API keys, system prompt, temperature)
+- [x] LLM provider configuration (model, API keys, system prompt, temperature) — Validated in Phase 2: Core Settings UI
 - [ ] Plugin/skills enable/disable and configuration
-- [ ] General settings editor (persona, memory, toolsets, compression, etc.)
-- [ ] Live config.yaml read/write without restarting the agent
-- [ ] Status overview (connected platforms, active sessions, health)
+- [x] General settings editor (persona, memory, toolsets, compression, etc.) — Validated in Phase 2: Core Settings UI
+- [x] Live config.yaml read/write without restarting the agent — Validated in Phase 2: Core Settings UI
+- [x] Status overview (connected platforms, active sessions, health) — Validated in Phase 2: Core Settings UI
 
 ### Out of Scope
 
@@ -84,4 +84,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-30 after initialization*
+*Last updated: 2026-03-30 after Phase 2 completion*
