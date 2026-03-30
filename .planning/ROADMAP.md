@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 1: Foundation and Auth** - Dashboard subapp wired into gateway with working login/logout
 - [ ] **Phase 2: Core Settings UI** - LLM config, general settings, and status overview backed by the config API
 - [ ] **Phase 3: Platforms and Skills** - Platform connection management (with test-connection) and skill enable/disable
-- [ ] **Phase 4: Onboarding Wizard** - Multi-step first-run wizard orchestrating all prior phases
+- [x] **Phase 4: Onboarding Wizard** - Multi-step first-run wizard orchestrating all prior phases (completed 2026-03-30)
 
 ## Phase Details
 
@@ -78,7 +78,10 @@ Plans:
   2. User can move forward and backward through wizard steps without losing entered values
   3. The LLM step validates that an API key is provided before allowing progression; the platform step validates the connection before allowing progression
   4. Completing the wizard clears the draft file and lands the user on the dashboard home with a confirmation summary
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [x] 04-01-PLAN.md — Wizard handler, templates, step bar CSS, route registration
+- [x] 04-02-PLAN.md — First-time redirect, nav link, integration tests
 **UI hint**: yes
 
 ## Progress
@@ -91,4 +94,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. Foundation and Auth | 3/3 | Complete |  |
 | 2. Core Settings UI | 0/2 | Planned    |  |
 | 3. Platforms and Skills | 0/4 | Planned | - |
-| 4. Onboarding Wizard | 0/? | Not started | - |
+| 4. Onboarding Wizard | 2/2 | Complete   | 2026-03-30 |

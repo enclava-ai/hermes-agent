@@ -43,11 +43,11 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Onboarding Wizard
 
-- [ ] **WIZD-01**: First-time users see a step-by-step onboarding wizard with progress indicator
-- [ ] **WIZD-02**: Wizard includes a step to configure the LLM provider and API key
-- [ ] **WIZD-03**: Wizard includes a step to set up at least one messaging platform connection
-- [ ] **WIZD-04**: Wizard includes back/forward navigation between steps
-- [ ] **WIZD-05**: Wizard validates each step before allowing progression (e.g., test connection)
+- [x] **WIZD-01**: First-time users see a step-by-step onboarding wizard with progress indicator
+- [x] **WIZD-02**: Wizard includes a step to configure the LLM provider and API key
+- [x] **WIZD-03**: Wizard includes a step to set up at least one messaging platform connection
+- [x] **WIZD-04**: Wizard includes back/forward navigation between steps
+- [x] **WIZD-05**: Wizard validates each step before allowing progression (e.g., test connection)
 
 ### Infrastructure
 
@@ -105,11 +105,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | GENL-01 | Phase 2 | Complete |
 | GENL-02 | Phase 2 | Complete |
 | GENL-03 | Phase 2 | Complete |
-| WIZD-01 | Phase 4 | Pending |
-| WIZD-02 | Phase 4 | Pending |
-| WIZD-03 | Phase 4 | Pending |
-| WIZD-04 | Phase 4 | Pending |
-| WIZD-05 | Phase 4 | Pending |
+| WIZD-01 | Phase 4 | Complete |
+| WIZD-02 | Phase 4 | Complete |
+| WIZD-03 | Phase 4 | Complete |
+| WIZD-04 | Phase 4 | Complete |
+| WIZD-05 | Phase 4 | Complete |
 | INFR-01 | Phase 1 | Complete |
 | INFR-02 | Phase 1 | Complete |
 | INFR-03 | Phase 1 | Complete |

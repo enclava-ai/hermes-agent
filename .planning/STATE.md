@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to plan
-stopped_at: Phase 4 context gathered
-last_updated: "2026-03-30T14:10:35.223Z"
+status: Milestone complete
+stopped_at: Completed 04-02-PLAN.md
+last_updated: "2026-03-30T14:43:29.970Z"
 progress:
   total_phases: 4
-  completed_phases: 3
-  total_plans: 9
-  completed_plans: 9
+  completed_phases: 4
+  total_plans: 11
+  completed_plans: 11
 ---
 
 # Project State
@@ -19,11 +19,11 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-30)
 
 **Core value:** Users can fully configure and onboard Hermes Agent through a browser without touching config files or CLI commands.
-**Current focus:** Phase 03 — platforms-and-skills
+**Current focus:** Phase 04 — onboarding-wizard
 
 ## Current Position
 
-Phase: 4
+Phase: 04
 Plan: Not started
 
 ## Performance Metrics
@@ -55,6 +55,8 @@ Plan: Not started
 | Phase 03-platforms-and-skills P03 | 2 | 2 tasks | 4 files |
 | Phase 03 P02 | 2 | 2 tasks | 3 files |
 | Phase 03-platforms-and-skills P04 | 3 | 1 tasks | 2 files |
+| Phase 04 P01 | 3 | 2 tasks | 8 files |
+| Phase 04 P02 | 4 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -83,6 +85,8 @@ Recent decisions affecting current work:
 - [Phase 03]: Added email test handler (IMAP login) since platform_schema marks email as test_supported=True
 - [Phase 03]: Password fields with redaction markers (***) skipped on save to prevent overwriting secrets
 - [Phase 03-platforms-and-skills]: Fake tools.skills_tool injected via sys.modules autouse fixture to avoid firecrawl import chain in tests
+- [Phase 04]: Wizard templates standalone (not including settings partials) to avoid coupling form actions to settings endpoints
+- [Phase 04]: Patched disk-level draft functions instead of _draft_file_path to avoid MagicMock leaking into json.loads in wizard completion tests
 
 ### Pending Todos
 
@@ -95,6 +99,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-30T14:10:35.220Z
-Stopped at: Phase 4 context gathered
-Resume file: .planning/phases/04-onboarding-wizard/04-CONTEXT.md
+Last session: 2026-03-30T14:38:42.139Z
+Stopped at: Completed 04-02-PLAN.md
+Resume file: None
