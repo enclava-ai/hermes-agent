@@ -66,7 +66,7 @@ Plans:
 - [x] 03-01-PLAN.md — Platform schema, tab handler, card grid UI
 - [x] 03-02-PLAN.md — Test connection + save handlers, HTMX wiring
 - [x] 03-03-PLAN.md — Skills tab with card grid, toggle, category grouping
-- [ ] 03-04-PLAN.md — Integration tests for all platform and skill endpoints
+- [x] 03-04-PLAN.md — Integration tests for all platform and skill endpoints
 **UI hint**: yes
 
 ### Phase 4: Onboarding Wizard
