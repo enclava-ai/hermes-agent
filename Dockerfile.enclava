@@ -1,0 +1,31 @@
+FROM python:3.12-slim-bookworm
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    HERMES_HOME=/opt/data
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+    bash \
+    ca-certificates \
+    cryptsetup-bin \
+    curl \
+    dmsetup \
+    e2fsprogs \
+    git \
+    ripgrep \
+    util-linux \
+ && rm -rf /var/lib/apt/lists/*
+
+COPY . /opt/hermes
+WORKDIR /opt/hermes
+
+# Keep the runtime image focused on the API/gateway path: core package deps plus aiohttp.
+RUN pip install --no-cache-dir . aiohttp
+
+RUN chmod +x /opt/hermes/docker/entrypoint.sh \
+ && chmod +x /opt/hermes/docker/entrypoint-enclava-api.sh
+
+VOLUME ["/opt/data"]
+ENTRYPOINT ["/opt/hermes/docker/entrypoint-enclava-api.sh"]

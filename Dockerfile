@@ -14,6 +14,7 @@ RUN npm install
 
 WORKDIR /opt/hermes
 RUN chmod +x /opt/hermes/docker/entrypoint.sh
+RUN chmod +x /opt/hermes/docker/entrypoint-enclava-api.sh
 
 ENV HERMES_HOME=/opt/data
 VOLUME [ "/opt/data" ]

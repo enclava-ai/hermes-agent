@@ -291,7 +291,7 @@ class APIServerAdapter(BasePlatformAdapter):
         super().__init__(config, Platform.API_SERVER)
         extra = config.extra or {}
         self._host: str = extra.get("host", os.getenv("API_SERVER_HOST", DEFAULT_HOST))
-        self._port: int = int(extra.get("port", os.getenv("API_SERVER_PORT", str(DEFAULT_PORT))))
+        self._port: int = int(extra.get("port", os.getenv("API_SERVER_PORT") or os.getenv("PORT", str(DEFAULT_PORT))))
         self._api_key: str = extra.get("key", os.getenv("API_SERVER_KEY", ""))
         self._cors_origins: tuple[str, ...] = self._parse_cors_origins(
             extra.get("cors_origins", os.getenv("API_SERVER_CORS_ORIGINS", "")),
