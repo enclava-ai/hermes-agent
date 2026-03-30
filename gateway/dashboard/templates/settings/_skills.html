@@ -1,0 +1,51 @@
+{% if flash %}
+{% include "settings/_flash.html" %}
+{% endif %}
+
+{% if managed %}
+<article class="managed-banner">
+  Configuration is managed by NixOS/Enclava. Skill toggles are read-only.
+</article>
+{% endif %}
+
+<p class="skills-summary">{{ enabled_count }} of {{ total_skills }} skills enabled</p>
+
+{% if not categories %}
+<p>No skills installed. Place skill directories in <code>~/.hermes/skills/</code> to get started.</p>
+{% endif %}
+
+{% for category in categories %}
+<h4>{{ category.name | capitalize }}</h4>
+<div class="card-grid">
+  {% for skill in category.skills %}
+  <article class="skill-card">
+    <div class="skill-header">
+      <div>
+        <strong>{{ skill.name }}</strong>
+        {% if skill.description %}<br><small>{{ skill.description }}</small>{% endif %}
+      </div>
+      <label class="toggle-switch">
+        <input type="checkbox"
+               {% if skill.enabled %}checked{% endif %}
+               {% if managed %}disabled{% endif %}
+               hx-post="/dashboard/settings/skills/{{ skill.name }}/toggle"
+               hx-target="#tab-content"
+               hx-swap="innerHTML">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    {% if skill.settings %}
+    <details class="skill-settings">
+      <summary>Settings</summary>
+      <div class="skill-settings-body">
+        {% for key, value in skill.settings.items() %}
+        <label for="skill-{{ skill.name }}-{{ key }}">{{ key }}</label>
+        <input type="text" id="skill-{{ skill.name }}-{{ key }}" value="{{ value }}" disabled>
+        {% endfor %}
+      </div>
+    </details>
+    {% endif %}
+  </article>
+  {% endfor %}
+</div>
+{% endfor %}
