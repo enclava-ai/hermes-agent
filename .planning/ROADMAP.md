@@ -48,7 +48,7 @@ Plans:
   5. Attempting to save config on a managed (NixOS/Enclava) install displays a clear error instead of silently failing
 **Plans**: 2 plans
 Plans:
-- [ ] 02-01-PLAN.md — Tabbed settings shell, LLM config tab (provider, API key, model params, SOUL.md)
+- [x] 02-01-PLAN.md — Tabbed settings shell, LLM config tab (provider, API key, model params, SOUL.md)
 - [ ] 02-02-PLAN.md — General settings tab, Status overview tab, integration tests
 **UI hint**: yes
 
@@ -84,6 +84,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation and Auth | 3/3 | Complete |  |
-| 2. Core Settings UI | 0/2 | Not started | - |
+| 2. Core Settings UI | 0/2 | Planned    |  |
 | 3. Platforms and Skills | 0/? | Not started | - |
 | 4. Onboarding Wizard | 0/? | Not started | - |

@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Ready to plan
-stopped_at: Phase 2 context gathered
-last_updated: "2026-03-30T11:33:52.620Z"
+stopped_at: Completed 02-02-PLAN.md
+last_updated: "2026-03-30T12:03:25.056Z"
 progress:
   total_phases: 4
-  completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
+  completed_phases: 2
+  total_plans: 5
+  completed_plans: 5
 ---
 
 # Project State
@@ -19,11 +19,11 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-30)
 
 **Core value:** Users can fully configure and onboard Hermes Agent through a browser without touching config files or CLI commands.
-**Current focus:** Phase 01 — foundation-and-auth
+**Current focus:** Phase 02 — core-settings-ui
 
 ## Current Position
 
-Phase: 2
+Phase: 3
 Plan: Not started
 
 ## Performance Metrics
@@ -49,6 +49,8 @@ Plan: Not started
 | Phase 01-foundation-and-auth P01 | 12 | 3 tasks | 10 files |
 | Phase 01-foundation-and-auth P02 | 15 | 2 tasks | 5 files |
 | Phase 01-foundation-and-auth P03 | 18 | 2 tasks | 3 files |
+| Phase 02 P01 | 2 | 2 tasks | 6 files |
+| Phase 02 P02 | 3 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -68,6 +70,10 @@ Recent decisions affecting current work:
 - [Phase 01-foundation-and-auth]: render_template() in aiohttp-jinja2 is synchronous — must NOT be awaited; all call sites in auth.py fixed
 - [Phase 01-foundation-and-auth]: auth_middleware strips one prefix level from request.path to match EXEMPT_PATHS in both standalone and subapp-mounted contexts
 - [Phase 01-foundation-and-auth]: Integration tests use on_startup.clear() + inject_fernet hook to avoid touching real config.yaml and .env files
+- [Phase 02]: Soul/persona textarea integrated into LLM tab (not separate tab) per D-09
+- [Phase 02]: _render_llm() helper pattern established for shared GET/POST template rendering in settings handlers
+- [Phase 02]: Toolset list sorted alphabetically in UI for consistent ordering
+- [Phase 02]: Status tab uses outerHTML swap to preserve HTMX polling attributes on re-render
 
 ### Pending Todos
 
@@ -80,6 +86,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-30T11:33:52.618Z
-Stopped at: Phase 2 context gathered
-Resume file: .planning/phases/02-core-settings-ui/02-CONTEXT.md
+Last session: 2026-03-30T11:59:22.166Z
+Stopped at: Completed 02-02-PLAN.md
+Resume file: None
