@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard — Hermes{% endblock %}
+
+{% block content %}
+<nav>
+    <ul>
+        <li><strong>Hermes Dashboard</strong></li>
+    </ul>
+    <ul>
+        <li>
+            <form method="POST" action="/dashboard/logout" style="margin:0">
+                <button type="submit" class="secondary outline">Sign out</button>
+            </form>
+        </li>
+    </ul>
+</nav>
+
+<h2>Welcome</h2>
+<p>Dashboard is running. Configuration UI will be added in Phase 2.</p>
+
+<section>
+    <h3>Status</h3>
+    <p>Gateway is online.</p>
+</section>
+{% endblock %}
