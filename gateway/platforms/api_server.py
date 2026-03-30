@@ -1272,6 +1272,15 @@ class APIServerAdapter(BasePlatformAdapter):
             except (ConnectionRefusedError, OSError):
                 pass  # port is free
 
+            # Dashboard subapp (optional — gracefully absent if not installed)
+            try:
+                from gateway.dashboard import create_dashboard_app
+                _dashboard = create_dashboard_app(gateway_runner=self)
+                self._app.add_subapp('/dashboard', _dashboard)
+                logger.info("[%s] Dashboard mounted at /dashboard/", self.name)
+            except ImportError:
+                pass
+
             self._runner = web.AppRunner(self._app)
             await self._runner.setup()
             self._site = web.TCPSite(self._runner, self._host, self._port)
