@@ -88,8 +88,10 @@ def create_dashboard_app(gateway_runner=None) -> "web.Application":
     app.router.add_get("/settings/status", handle_status_tab)
 
     # Platform configuration tab (Phase 3)
-    from .platforms import handle_platforms_tab
+    from .platforms import handle_platforms_tab, handle_platform_test, handle_platform_save
     app.router.add_get("/settings/platforms", handle_platforms_tab)
+    app.router.add_post("/settings/platforms/{platform}/test", handle_platform_test)
+    app.router.add_post("/settings/platforms/{platform}/save", handle_platform_save)
 
     # Skills management tab (Phase 3)
     from .skills import handle_skills_tab, handle_skill_toggle
