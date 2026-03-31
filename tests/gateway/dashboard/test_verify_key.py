@@ -63,7 +63,8 @@ class TestVerifyKey:
         """POST with valid api_key provider returns model select options."""
         app, fernet = _make_app()
 
-        mock_response = AsyncMock()
+        # httpx.Response has synchronous json() and raise_for_status()
+        mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
             "data": [
@@ -232,7 +233,8 @@ class TestVerifyKey:
         """POST with redacted api_key (***) uses env var value instead."""
         app, fernet = _make_app()
 
-        mock_response = AsyncMock()
+        # httpx.Response has synchronous json() and raise_for_status()
+        mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {"data": [{"id": "test-model"}]}
         mock_response.raise_for_status = MagicMock()

@@ -1,0 +1,17 @@
+{% if error %}
+<div class="flash flash-error" role="alert">{{ error }}</div>
+<label>
+  Model Name
+  <input type="text" name="model_name" value="{{ model_name|default('', true) }}"
+         placeholder="e.g. claude-opus-4.6">
+</label>
+{% else %}
+<label>
+  Model Name
+  <select name="model_name">
+    {% for model in models %}
+    <option value="{{ model }}" {% if model == current_model %}selected{% endif %}>{{ model }}</option>
+    {% endfor %}
+  </select>
+</label>
+{% endif %}

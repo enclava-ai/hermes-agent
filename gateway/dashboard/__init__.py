@@ -75,6 +75,7 @@ def create_dashboard_app(gateway_runner=None) -> "web.Application":
     from .settings import (
         handle_llm_tab,
         handle_llm_save,
+        handle_llm_verify_key,
         handle_soul_save,
         handle_general_tab,
         handle_general_save,
@@ -82,6 +83,7 @@ def create_dashboard_app(gateway_runner=None) -> "web.Application":
     )
     app.router.add_get("/settings/llm", handle_llm_tab)
     app.router.add_post("/settings/llm/save", handle_llm_save)
+    app.router.add_post("/settings/llm/verify-key", handle_llm_verify_key)
     app.router.add_post("/settings/soul/save", handle_soul_save)
     app.router.add_get("/settings/general", handle_general_tab)
     app.router.add_post("/settings/general/save", handle_general_save)

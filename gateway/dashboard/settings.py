@@ -16,6 +16,8 @@ import logging
 from pathlib import Path
 from typing import Optional
 
+import httpx
+
 logger = logging.getLogger(__name__)
 
 try:
@@ -23,6 +25,15 @@ try:
     from aiohttp import web
 except ImportError:
     pass
+
+# Anthropic uses a non-OpenAI-compatible API; return a hardcoded model list.
+_ANTHROPIC_MODELS = [
+    "claude-3-5-haiku-20241022",
+    "claude-haiku-3.5",
+    "claude-opus-4",
+    "claude-sonnet-4",
+    "claude-sonnet-4-20250514",
+]
 
 
 # --- SOUL.md helpers ---
@@ -106,6 +117,85 @@ def _render_llm(request: "web.Request", flash: Optional[str] = None) -> "web.Res
 
 
 # --- HTTP handlers ---
+
+async def handle_llm_verify_key(request: "web.Request") -> "web.Response":
+    """POST /settings/llm/verify-key — verify API key and return model list.
+
+    On success, returns an HTML partial with a <select> of available models.
+    On failure, returns an error flash div plus the original text input.
+    """
+    from hermes_cli.auth import PROVIDER_REGISTRY
+    from hermes_cli.config import get_env_value
+
+    data = await request.post()
+    provider_id = data.get("provider", "").strip()
+    api_key_raw = data.get("api_key", "").strip()
+    api_key_env_var = data.get("api_key_env_var", "").strip()
+    current_model = data.get("model_name", "").strip()
+
+    ctx = {"model_name": current_model, "current_model": current_model}
+
+    if not provider_id:
+        ctx["error"] = "No provider selected."
+        return aiohttp_jinja2.render_template(
+            "settings/_model_options.html", request, ctx)
+
+    registry_entry = PROVIDER_REGISTRY.get(provider_id)
+    if not registry_entry:
+        ctx["error"] = f"Unknown provider: {provider_id}"
+        return aiohttp_jinja2.render_template(
+            "settings/_model_options.html", request, ctx)
+
+    if registry_entry.auth_type != "api_key":
+        ctx["error"] = "Key verification is not available for this provider."
+        return aiohttp_jinja2.render_template(
+            "settings/_model_options.html", request, ctx)
+
+    # Determine actual API key: prefer user-entered unless redacted
+    api_key = api_key_raw if api_key_raw and "***" not in api_key_raw else None
+    if not api_key and api_key_env_var:
+        api_key = get_env_value(api_key_env_var)
+    if not api_key:
+        ctx["error"] = "No API key provided."
+        return aiohttp_jinja2.render_template(
+            "settings/_model_options.html", request, ctx)
+
+    # Anthropic special case — hardcoded models, no HTTP call
+    if provider_id == "anthropic":
+        ctx["models"] = _ANTHROPIC_MODELS
+        return aiohttp_jinja2.render_template(
+            "settings/_model_options.html", request, ctx)
+
+    # All other api_key providers: fetch from OpenAI-compatible /models endpoint
+    base_url = registry_entry.inference_base_url.rstrip("/")
+    models_url = f"{base_url}/models"
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(
+                models_url,
+                headers={"Authorization": f"Bearer {api_key}"},
+            )
+            resp.raise_for_status()
+            payload = resp.json()
+            model_ids = sorted(
+                item["id"] for item in payload.get("data", [])
+                if isinstance(item, dict) and "id" in item
+            )
+        if not model_ids:
+            ctx["error"] = "No models returned by provider."
+            return aiohttp_jinja2.render_template(
+                "settings/_model_options.html", request, ctx)
+        ctx["models"] = model_ids
+    except httpx.HTTPStatusError as exc:
+        ctx["error"] = f"API returned {exc.response.status_code}. Check your key."
+    except Exception as exc:
+        logger.debug("Verify-key model fetch failed: %s", exc)
+        ctx["error"] = f"Could not reach provider: {exc}"
+
+    return aiohttp_jinja2.render_template(
+        "settings/_model_options.html", request, ctx)
+
 
 async def handle_llm_tab(request: "web.Request") -> "web.Response":
     """GET /settings/llm — render the LLM configuration tab."""
