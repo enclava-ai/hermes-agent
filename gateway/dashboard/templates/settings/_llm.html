@@ -21,11 +21,13 @@
         {% endfor %}
       </select>
     </label>
-    <label>
-      Model Name
-      <input type="text" name="model_name" value="{{ model_name }}"
-             placeholder="e.g. claude-opus-4.6" {% if managed %}disabled{% endif %}>
-    </label>
+    <div id="model-input-area">
+      <label>
+        Model Name
+        <input type="text" name="model_name" value="{{ model_name }}"
+               placeholder="e.g. claude-opus-4.6" {% if managed %}disabled{% endif %}>
+      </label>
+    </div>
   </div>
 
   <!-- API Key section — only for api_key auth type providers -->
@@ -38,6 +40,17 @@
       <small>Leave unchanged to keep current key. Stored in <code>{{ api_key_env_var }}</code></small>
     </label>
     <input type="hidden" name="api_key_env_var" value="{{ api_key_env_var }}">
+    <button type="button"
+            hx-post="/dashboard/settings/llm/verify-key"
+            hx-target="#model-input-area"
+            hx-swap="innerHTML"
+            hx-include="[name='provider'],[name='api_key'],[name='api_key_env_var'],[name='model_name']"
+            hx-indicator="#verify-spinner"
+            {% if managed %}disabled{% endif %}
+            class="outline secondary">
+      Verify Key &amp; Load Models
+    </button>
+    <span id="verify-spinner" class="htmx-indicator" style="margin-left:0.5rem;">Verifying...</span>
   </div>
 
   <div class="grid">
@@ -92,6 +105,15 @@
             if (note) note.remove();
         } else {
             keySection.style.display = 'none';
+        }
+
+        // Reset model area back to text input if provider changed to non-api_key
+        var modelArea = document.getElementById('model-input-area');
+        if (authType !== 'api_key') {
+            var existingSelect = modelArea.querySelector('select[name="model_name"]');
+            if (existingSelect) {
+                modelArea.innerHTML = '<label>Model Name<input type="text" name="model_name" value="" placeholder="e.g. claude-opus-4.6"></label>';
+            }
         }
     }
 
