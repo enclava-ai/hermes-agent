@@ -120,5 +120,15 @@
     select.addEventListener('change', updateKeySection);
     // Run on load to set initial state
     updateKeySection();
+
+    // Auto-load models if a key is already stored (displayed as redacted ***)
+    var apiKeyInput = keySection.querySelector('input[name="api_key"]');
+    if (apiKeyInput && apiKeyInput.value.indexOf('***') !== -1) {
+        var verifyBtn = keySection.querySelector('button[hx-post]');
+        if (verifyBtn) {
+            // Small delay so HTMX is ready
+            setTimeout(function() { htmx.trigger(verifyBtn, 'click'); }, 100);
+        }
+    }
 })();
 </script>

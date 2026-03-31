@@ -172,16 +172,23 @@ async def ensure_dashboard_credentials(app: "web.Application") -> None:
     dashboard_cfg = config.setdefault("dashboard", {})
 
     if not dashboard_cfg.get("password_hash"):
-        password = _generate_password()
+        import os
+        env_password = os.environ.get("DASHBOARD_PASSWORD", "").strip()
+        if env_password:
+            password = env_password
+            dashboard_cfg["force_change"] = True
+            logger.info("Dashboard: using password from DASHBOARD_PASSWORD env var")
+        else:
+            password = _generate_password()
+            dashboard_cfg["force_change"] = True
+            logger.info(
+                "Dashboard: first-run password is: %s — change it at /dashboard/",
+                password,
+            )
         dashboard_cfg["password_hash"] = hash_password(password)
-        dashboard_cfg["username"] = "admin"
-        dashboard_cfg["force_change"] = True
+        dashboard_cfg["username"] = os.environ.get("DASHBOARD_USERNAME", "admin").strip() or "admin"
         save_config(config)
-        logger.info(
-            "Dashboard: first-run password is: %s — change it at /dashboard/",
-            password,
-        )
-        app["force_password_change"] = True
+        app["force_password_change"] = dashboard_cfg["force_change"]
     else:
         app["force_password_change"] = dashboard_cfg.get("force_change", False)
 
