@@ -3975,16 +3975,19 @@ class AIAgent:
                     pool=30.0,
                 ),
             }
+            # Reset stale-stream timer so the detector measures from this
+            # attempt's start, not a previous attempt's last chunk.
+            last_chunk_time["t"] = time.time()
             if self.api_mode == "tinfoil":
-                request_client_holder["client"] = self._tinfoil_client
+                # Do NOT put the shared tinfoil client into the holder — the
+                # holder's cleanup paths call close() which would break all
+                # future requests.  Call create() directly instead.
+                stream = self._tinfoil_client.chat.completions.create(**stream_kwargs)
             else:
                 request_client_holder["client"] = self._create_request_openai_client(
                     reason="chat_completion_stream_request"
                 )
-            # Reset stale-stream timer so the detector measures from this
-            # attempt's start, not a previous attempt's last chunk.
-            last_chunk_time["t"] = time.time()
-            stream = request_client_holder["client"].chat.completions.create(**stream_kwargs)
+                stream = request_client_holder["client"].chat.completions.create(**stream_kwargs)
 
             content_parts: list = []
             tool_calls_acc: dict = {}
@@ -4362,6 +4365,9 @@ class AIAgent:
                             self._anthropic_api_key,
                             getattr(self, "_anthropic_base_url", None),
                         )
+                    elif self.api_mode == "tinfoil":
+                        from agent.tinfoil_adapter import build_client as _tinfoil_rebuild
+                        self._tinfoil_client = _tinfoil_rebuild(self.api_key)
                     else:
                         request_client = request_client_holder.get("client")
                         if request_client is not None:
