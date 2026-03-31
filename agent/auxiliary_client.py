@@ -63,6 +63,7 @@ _API_KEY_PROVIDER_AUX_MODELS: Dict[str, str] = {
     "opencode-zen": "gemini-3-flash",
     "opencode-go": "glm-5",
     "kilocode": "google/gemini-3-flash-preview",
+    "tinfoil": "llama3-3-70b",
 }
 
 # OpenRouter app attribution headers
@@ -704,6 +705,22 @@ def _try_anthropic() -> Tuple[Optional[Any], Optional[str]]:
     return AnthropicAuxiliaryClient(real_client, model, token, base_url, is_oauth=is_oauth), model
 
 
+def _try_tinfoil() -> Tuple[Optional[Any], Optional[str]]:
+    """Try to build a Tinfoil auxiliary client from env credentials."""
+    api_key = os.getenv("TINFOIL_API_KEY") or os.getenv("TINFOIL_TOKEN")
+    if not api_key:
+        return None, None
+    try:
+        from agent.tinfoil_adapter import build_client as _tinfoil_build
+        client = _tinfoil_build(api_key.strip())
+        model = _API_KEY_PROVIDER_AUX_MODELS.get("tinfoil", "llama3-3-70b")
+        logger.debug("Auxiliary client: Tinfoil confidential (%s)", model)
+        return client, model
+    except Exception as exc:
+        logger.debug("Tinfoil auxiliary client build failed: %s", exc)
+        return None, None
+
+
 def _resolve_forced_provider(forced: str) -> Tuple[Optional[OpenAI], Optional[str]]:
     """Resolve a specific forced provider.  Returns (None, None) if creds missing."""
     if forced == "openrouter":
@@ -724,8 +741,30 @@ def _resolve_forced_provider(forced: str) -> Tuple[Optional[OpenAI], Optional[st
             logger.warning("auxiliary.provider=codex but no Codex OAuth token found (run: hermes model)")
         return client, model
 
+    if forced == "tinfoil":
+        client, model = _try_tinfoil()
+        if client is None:
+            logger.warning("auxiliary.provider=tinfoil but no Tinfoil credentials found (set TINFOIL_API_KEY)")
+        return client, model
+
     if forced == "main":
-        # "main" = skip OpenRouter/Nous, use the main chat model's credentials.
+        # When the main provider is Tinfoil, auxiliary tasks must also use Tinfoil.
+        # Do not silently route to OpenRouter — that would violate confidentiality.
+        try:
+            from hermes_cli.config import load_config as _load_config
+            _cfg = _load_config()
+            _model_cfg = _cfg.get("model", {})
+            _main_provider = str(_model_cfg.get("provider") or "").strip().lower()
+        except Exception:
+            _main_provider = ""
+
+        if _main_provider == "tinfoil":
+            client, model = _try_tinfoil()
+            if client is None:
+                logger.warning("auxiliary.provider=main with tinfoil main provider but TINFOIL_API_KEY not set")
+            return client, model
+
+        # Original "main" fallback chain for non-Tinfoil providers
         for try_fn in (_try_custom_endpoint, _try_codex, _resolve_api_key_provider):
             client, model = try_fn()
             if client is not None:
@@ -815,6 +854,7 @@ def resolve_provider_client(
     raw_codex: bool = False,
     explicit_base_url: str = None,
     explicit_api_key: str = None,
+    task: str = None,
 ) -> Tuple[Optional[Any], Optional[str]]:
     """Central router: given a provider name and optional model, return a
     configured client with the correct auth, base URL, and API format.
@@ -838,6 +878,7 @@ def resolve_provider_client(
             the main agent loop).
         explicit_base_url: Optional direct OpenAI-compatible endpoint.
         explicit_api_key: Optional API key paired with explicit_base_url.
+        task: Optional task hint (e.g. "vision") used for fail-closed guards.
 
     Returns:
         (client, resolved_model) or (None, None) if auth is unavailable.
@@ -848,6 +889,23 @@ def resolve_provider_client(
         provider = "openai-codex"
     if provider == "main":
         provider = "custom"
+
+    # Tinfoil confidentiality guard: if the main provider is Tinfoil, vision
+    # auxiliary must not fall back to OpenRouter or other non-confidential providers.
+    # Return None rather than silently leaking data.
+    if task == "vision":
+        try:
+            from hermes_cli.config import load_config as _load_cfg_vision
+            _vcfg = _load_cfg_vision()
+            _vprovider = str((_vcfg.get("model") or {}).get("provider") or "").strip().lower()
+        except Exception:
+            _vprovider = ""
+        if provider == "tinfoil" or (_vprovider == "tinfoil" and provider not in ("tinfoil", "custom")):
+            logger.warning(
+                "Vision auxiliary disabled: Tinfoil is active and vision is not yet "
+                "supported through Tinfoil. Configure a non-Tinfoil main provider to enable vision."
+            )
+            return None, None
 
     # ── Auto: try all providers in priority order ────────────────────
     if provider == "auto":
