@@ -139,9 +139,13 @@ def _build_llm_context(draft: dict) -> dict:
     config = load_config()
     llm_draft = draft.get("llm", {})
 
-    # Parse model string from config
-    model_str = config.get("model", "")
-    cfg_provider, _, cfg_model_name = model_str.partition("/")
+    # Parse model config — supports both dict and string formats
+    model_cfg = config.get("model", "")
+    if isinstance(model_cfg, dict):
+        cfg_provider = model_cfg.get("provider", "")
+        cfg_model_name = model_cfg.get("default", "")
+    else:
+        cfg_provider, _, cfg_model_name = str(model_cfg).partition("/")
 
     provider = llm_draft.get("provider") or cfg_provider
     model_name = llm_draft.get("model_name") or cfg_model_name
