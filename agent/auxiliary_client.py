@@ -1176,6 +1176,16 @@ def get_available_vision_backends() -> List[str]:
     return [provider for provider in ordered if _strict_vision_backend_available(provider)]
 
 
+def _vprovider_for_vision() -> str:
+    """Return the configured main provider for use in vision fail-closed checks."""
+    try:
+        from hermes_cli.config import load_config as _lcfg
+        _cfg = _lcfg()
+        return str((_cfg.get("model") or {}).get("provider") or "").strip().lower()
+    except Exception:
+        return ""
+
+
 def resolve_vision_provider_client(
     provider: Optional[str] = None,
     model: Optional[str] = None,
@@ -1195,6 +1205,17 @@ def resolve_vision_provider_client(
         "vision", provider, model, base_url, api_key
     )
     requested = _normalize_vision_provider(requested)
+
+    # Tinfoil fail-closed: vision is not supported through Tinfoil's confidential enclave.
+    # Never fall back to OpenRouter or other providers when Tinfoil is active —
+    # that would silently route potentially-sensitive image data off-enclave.
+    if requested == "tinfoil" or _vprovider_for_vision() == "tinfoil":
+        logger.warning(
+            "Vision auxiliary disabled: Tinfoil is configured as the main provider. "
+            "Vision tasks require a non-Tinfoil provider. "
+            "Configure 'auxiliary.vision' in config.yaml to enable vision separately."
+        )
+        return None, None, None
 
     def _finalize(resolved_provider: str, sync_client: Any, default_model: Optional[str]):
         if sync_client is None:
