@@ -98,7 +98,7 @@ class TestLLMTab:
             assert resp.status == 200
             body = await resp.text()
             assert "saved" in body.lower() or "Saved" in body
-            assert saved["model"] == "deepseek/deepseek-chat"
+            assert saved["model"] == {"provider": "deepseek", "default": "deepseek-chat"}
 
     @pytest.mark.asyncio
     async def test_llm_save_rejects_managed(self):

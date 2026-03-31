@@ -380,7 +380,7 @@ class TestWizardCompletion:
             # Verify config was saved with model key
             assert mock_save_config.called
             saved_config = mock_save_config.call_args[0][0]
-            assert saved_config.get("model") == "openai/gpt-4o"
+            assert saved_config.get("model") == {"provider": "openai", "default": "gpt-4o"}
 
             # Verify API key was saved
             assert mock_save_env.called

@@ -407,7 +407,12 @@ async def handle_wizard_complete(request: "web.Request") -> "web.Response":
 
         llm = draft.get("llm", {})
         if llm.get("provider") and llm.get("model_name"):
-            config["model"] = f"{llm['provider']}/{llm['model_name']}"
+            model_cfg = config.get("model", {})
+            if not isinstance(model_cfg, dict):
+                model_cfg = {}
+            model_cfg["provider"] = llm["provider"]
+            model_cfg["default"] = llm["model_name"]
+            config["model"] = model_cfg
 
         if llm.get("temperature"):
             try:

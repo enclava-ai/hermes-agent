@@ -68,9 +68,15 @@ def _render_llm(request: "web.Request", flash: Optional[str] = None) -> "web.Res
 
     config = load_config()
 
-    # Parse model string: "provider/model-name"
-    model_str = config.get("model", "")
-    provider, _, model_name = model_str.partition("/")
+    # Parse model config — supports both dict and string formats
+    model_cfg = config.get("model", "")
+    if isinstance(model_cfg, dict):
+        provider = model_cfg.get("provider", "")
+        model_name = model_cfg.get("default", "")
+    else:
+        # Legacy string format: "provider/model-name"
+        model_str = str(model_cfg)
+        provider, _, model_name = model_str.partition("/")
 
     # Build provider list for dropdown
     providers = []
@@ -220,10 +226,16 @@ async def handle_llm_save(request: "web.Request") -> "web.Response":
         provider = data.get("provider", "").strip()
         model_name = data.get("model_name", "").strip()
 
-        if provider and model_name:
-            config["model"] = f"{provider}/{model_name}"
-        elif model_name:
-            config["model"] = model_name
+        # Store model as a dict with separate provider and default fields
+        # (matches hermes_cli/setup.py format — runtime_provider.py reads this)
+        model_cfg = config.get("model", {})
+        if not isinstance(model_cfg, dict):
+            model_cfg = {}
+        if provider:
+            model_cfg["provider"] = provider
+        if model_name:
+            model_cfg["default"] = model_name
+        config["model"] = model_cfg
 
         temperature = data.get("temperature", "").strip()
         if temperature:
