@@ -220,6 +220,13 @@ PROVIDER_REGISTRY: Dict[str, ProviderConfig] = {
         api_key_env_vars=("HF_TOKEN",),
         base_url_env_var="HF_BASE_URL",
     ),
+    "tinfoil": ProviderConfig(
+        id="tinfoil",
+        name="Tinfoil (Confidential AI)",
+        auth_type="api_key",
+        inference_base_url="https://inference.tinfoil.sh",
+        api_key_env_vars=("TINFOIL_API_KEY", "TINFOIL_TOKEN"),
+    ),
 }
 
 
