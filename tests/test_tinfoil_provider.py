@@ -1,6 +1,9 @@
 """Tests for Tinfoil provider registration and runtime resolution."""
 from __future__ import annotations
 
+import os
+from unittest.mock import patch
+
 import pytest
 from hermes_cli.auth import PROVIDER_REGISTRY, ProviderConfig
 
@@ -25,10 +28,6 @@ class TestTinfoilRegistry:
     def test_tinfoil_config_is_provider_config_instance(self):
         cfg = PROVIDER_REGISTRY["tinfoil"]
         assert isinstance(cfg, ProviderConfig)
-
-
-import os
-from unittest.mock import patch
 
 
 class TestTinfoilRuntimeResolution:
@@ -73,3 +72,9 @@ class TestTinfoilRuntimeResolution:
         from hermes_cli.runtime_provider import resolve_runtime_provider
         result = resolve_runtime_provider(requested="auto")
         assert result.get("provider") != "tinfoil"
+
+    def test_resolves_base_url(self, monkeypatch):
+        monkeypatch.setenv("TINFOIL_API_KEY", "tf-test-key")
+        from hermes_cli.runtime_provider import resolve_runtime_provider
+        result = resolve_runtime_provider(requested="tinfoil")
+        assert result["base_url"] == "https://inference.tinfoil.sh"
