@@ -260,6 +260,7 @@ _PROVIDER_LABELS = {
     "ai-gateway": "AI Gateway",
     "kilocode": "Kilo Code",
     "alibaba": "Alibaba Cloud (DashScope)",
+    "tinfoil": "Tinfoil (Confidential AI)",
     "huggingface": "Hugging Face",
     "custom": "Custom endpoint",
 }
@@ -334,7 +335,7 @@ def list_available_providers() -> list[dict[str, str]]:
         "openrouter", "nous", "openai-codex", "copilot", "copilot-acp",
         "huggingface", "zai", "kimi-coding", "minimax", "minimax-cn", "kilocode", "anthropic", "alibaba",
         "opencode-zen", "opencode-go",
-        "ai-gateway", "deepseek", "custom",
+        "ai-gateway", "deepseek", "tinfoil", "custom",
     ]
     # Build reverse alias map
     aliases_for: dict[str, list[str]] = {}

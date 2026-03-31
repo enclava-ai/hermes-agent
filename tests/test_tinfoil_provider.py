@@ -114,7 +114,7 @@ class TestTinfoilModelCatalog:
         def _fake_prompt_fn(q):
             return ""
 
-        from hermes_cli.config import load_config, save_config
+        from hermes_cli.config import load_config
         cfg = load_config()
         setup_mod._setup_provider_model_selection(
             cfg, "tinfoil", "llama3-3-70b",

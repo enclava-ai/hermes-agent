@@ -16,7 +16,7 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 from hermes_constants import get_optional_skills_dir
 
@@ -26,7 +26,7 @@ PROJECT_ROOT = Path(__file__).parent.parent.resolve()
 
 
 # Shim for testing: tests can monkeypatch hermes_cli.setup._tinfoil_list_models
-def _tinfoil_list_models(api_key: str):
+def _tinfoil_list_models(api_key: str) -> List[str]:
     from agent.tinfoil_adapter import list_models
     return list_models(api_key)
 
