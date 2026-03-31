@@ -97,7 +97,7 @@ def _copilot_runtime_api_mode(model_cfg: Dict[str, Any], api_key: str) -> str:
         return "chat_completions"
 
 
-_VALID_API_MODES = {"chat_completions", "codex_responses", "anthropic_messages"}
+_VALID_API_MODES = {"chat_completions", "codex_responses", "anthropic_messages", "tinfoil"}
 
 
 def _parse_api_mode(raw: Any) -> Optional[str]:
@@ -383,6 +383,24 @@ def resolve_runtime_provider(
             "base_url": base_url,
             "api_key": token,
             "source": "env",
+            "requested_provider": requested_provider,
+        }
+
+    # Tinfoil (Confidential AI — enclave-verified inference)
+    if provider == "tinfoil":
+        creds = resolve_api_key_provider_credentials("tinfoil")
+        api_key = creds.get("api_key", "")
+        if not api_key:
+            raise AuthError(
+                "No Tinfoil credentials found. Set TINFOIL_API_KEY in your environment. "
+                "Get an API key at https://tinfoil.sh"
+            )
+        return {
+            "provider": "tinfoil",
+            "api_mode": "tinfoil",
+            "api_key": api_key,
+            "base_url": "https://inference.tinfoil.sh",
+            "source": creds.get("source", "env"),
             "requested_provider": requested_provider,
         }
 
