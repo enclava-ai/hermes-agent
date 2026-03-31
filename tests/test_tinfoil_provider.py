@@ -23,7 +23,7 @@ class TestTinfoilRegistry:
 
     def test_tinfoil_has_inference_base_url(self):
         cfg = PROVIDER_REGISTRY["tinfoil"]
-        assert cfg.inference_base_url == "https://inference.tinfoil.sh"
+        assert cfg.inference_base_url == "https://inference.tinfoil.sh/v1"
 
     def test_tinfoil_config_is_provider_config_instance(self):
         cfg = PROVIDER_REGISTRY["tinfoil"]
@@ -77,7 +77,7 @@ class TestTinfoilRuntimeResolution:
         monkeypatch.setenv("TINFOIL_API_KEY", "tf-test-key")
         from hermes_cli.runtime_provider import resolve_runtime_provider
         result = resolve_runtime_provider(requested="tinfoil")
-        assert result["base_url"] == "https://inference.tinfoil.sh"
+        assert result["base_url"] == "https://inference.tinfoil.sh/v1"
 
 
 class TestTinfoilModelCatalog:

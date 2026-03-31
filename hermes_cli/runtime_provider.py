@@ -399,7 +399,7 @@ def resolve_runtime_provider(
             "provider": "tinfoil",
             "api_mode": "tinfoil",
             "api_key": api_key,
-            "base_url": creds.get("base_url", "https://inference.tinfoil.sh"),
+            "base_url": creds.get("base_url", "https://inference.tinfoil.sh/v1"),
             "source": creds.get("source", "env"),
             "requested_provider": requested_provider,
         }
