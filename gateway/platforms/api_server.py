@@ -174,6 +174,9 @@ if AIOHTTP_AVAILABLE:
     @web.middleware
     async def cors_middleware(request, handler):
         """Add CORS headers for explicitly allowed origins; handle OPTIONS preflight."""
+        # Dashboard subapp handles its own auth — skip CORS for same-origin dashboard requests
+        if request.path.startswith("/dashboard"):
+            return await handler(request)
         adapter = request.app.get("api_server_adapter")
         origin = request.headers.get("Origin", "")
         cors_headers = None
