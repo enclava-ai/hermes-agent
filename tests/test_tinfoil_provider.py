@@ -78,3 +78,49 @@ class TestTinfoilRuntimeResolution:
         from hermes_cli.runtime_provider import resolve_runtime_provider
         result = resolve_runtime_provider(requested="tinfoil")
         assert result["base_url"] == "https://inference.tinfoil.sh"
+
+
+class TestTinfoilModelCatalog:
+    def test_provider_models_has_tinfoil_key(self):
+        from hermes_cli.models import _PROVIDER_MODELS
+        assert "tinfoil" in _PROVIDER_MODELS
+
+    def test_setup_default_models_has_tinfoil_fallback(self):
+        from hermes_cli.setup import _DEFAULT_PROVIDER_MODELS
+        assert "tinfoil" in _DEFAULT_PROVIDER_MODELS
+        assert len(_DEFAULT_PROVIDER_MODELS["tinfoil"]) > 0
+
+    def test_tinfoil_model_selection_uses_list_models(self, monkeypatch):
+        """Setup must call list_models (not fetch_api_models) for tinfoil."""
+        monkeypatch.setenv("TINFOIL_API_KEY", "tf-test-key")
+        called_with = {}
+
+        def _fake_list_models(api_key):
+            called_with["api_key"] = api_key
+            return ["llama3-3-70b", "mistral-7b-instruct"]
+
+        import hermes_cli.setup as setup_mod
+        monkeypatch.setattr(
+            "hermes_cli.setup._tinfoil_list_models",
+            _fake_list_models,
+            raising=False,
+        )
+
+        choices = []
+        def _fake_prompt_choice(question, options, default=0):
+            choices.extend(options)
+            return len(options) - 1  # "Keep current"
+
+        def _fake_prompt_fn(q):
+            return ""
+
+        from hermes_cli.config import load_config, save_config
+        cfg = load_config()
+        setup_mod._setup_provider_model_selection(
+            cfg, "tinfoil", "llama3-3-70b",
+            _fake_prompt_choice, _fake_prompt_fn,
+        )
+        # list_models should have been called, not fetch_api_models
+        assert called_with.get("api_key") == "tf-test-key"
+        # The model list from list_models should appear in choices
+        assert "llama3-3-70b" in choices
