@@ -25,6 +25,7 @@ model:
   #   "huggingface"  - Hugging Face Inference (requires: HF_TOKEN)
   #   "kilocode"     - KiloCode gateway (requires: KILOCODE_API_KEY)
   #   "ai-gateway"   - Vercel AI Gateway (requires: AI_GATEWAY_API_KEY)
+  #   "tinfoil"      - Tinfoil confidential AI (requires: TINFOIL_API_KEY)
   #
   # Local servers (LM Studio, Ollama, vLLM, llama.cpp):
   #   "custom"       - Any OpenAI-compatible endpoint. Set base_url below.
@@ -33,6 +34,12 @@ model:
   #     provider: "lmstudio"
   #     base_url: "http://localhost:1234/v1"
   #   No API key needed — local servers typically ignore auth.
+  #
+  # Confidential inference (Tinfoil):
+  #   provider: "tinfoil"
+  #   default: "llama3-3-70b"
+  #   # Set TINFOIL_API_KEY in ~/.hermes/.env
+  #   # All requests are routed through a verified secure enclave.
   #
   # Can also be overridden with --provider flag or HERMES_INFERENCE_PROVIDER env var.
   provider: "auto"
