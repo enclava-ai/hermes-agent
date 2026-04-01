@@ -246,6 +246,17 @@ def _has_any_provider_configured() -> bool:
             pass
 
 
+    # Check config.yaml — if model is a dict with an explicit provider set,
+    # the user has gone through setup (fresh installs have model as a plain
+    # string).  Also covers custom endpoints that store api_key/base_url in
+    # config rather than .env.
+    if isinstance(model_cfg, dict):
+        cfg_provider = (model_cfg.get("provider") or "").strip()
+        cfg_base_url = (model_cfg.get("base_url") or "").strip()
+        cfg_api_key = (model_cfg.get("api_key") or "").strip()
+        if cfg_provider or cfg_base_url or cfg_api_key:
+            return True
+
     # Check for Claude Code OAuth credentials (~/.claude/.credentials.json)
     # Only count these if Hermes has been explicitly configured — Claude Code
     # being installed doesn't mean the user wants Hermes to use their tokens.
@@ -632,6 +643,7 @@ def cmd_chat(args):
         "worktree": getattr(args, "worktree", False),
         "checkpoints": getattr(args, "checkpoints", False),
         "pass_session_id": getattr(args, "pass_session_id", False),
+        "max_turns": getattr(args, "max_turns", None),
     }
     # Filter out None values
     kwargs = {k: v for k, v in kwargs.items() if v is not None}
@@ -1242,21 +1254,9 @@ def _model_flow_custom(config):
     try:
         base_url = input(f"API base URL [{current_url or 'e.g. https://api.example.com/v1'}]: ").strip()
         api_key = input(f"API key [{current_key[:8] + '...' if current_key else 'optional'}]: ").strip()
-        model_name = input("Model name (e.g. gpt-4, llama-3-70b): ").strip()
-        context_length_str = input("Context length in tokens [leave blank for auto-detect]: ").strip()
     except (KeyboardInterrupt, EOFError):
         print("\nCancelled.")
         return
-
-    context_length = None
-    if context_length_str:
-        try:
-            context_length = int(context_length_str.replace(",", "").replace("k", "000").replace("K", "000"))
-            if context_length <= 0:
-                context_length = None
-        except ValueError:
-            print(f"Invalid context length: {context_length_str} — will auto-detect.")
-            context_length = None
 
     if not base_url and not current_url:
         print("No URL provided. Cancelled.")
@@ -1293,6 +1293,44 @@ def _model_flow_custom(config):
         )
         if probe.get("suggested_base_url"):
             print(f"  If this server expects /v1, try base URL: {probe['suggested_base_url']}")
+
+    # Select model — use probe results when available, fall back to manual input
+    model_name = ""
+    detected_models = probe.get("models") or []
+    try:
+        if len(detected_models) == 1:
+            print(f"  Detected model: {detected_models[0]}")
+            confirm = input("  Use this model? [Y/n]: ").strip().lower()
+            if confirm in ("", "y", "yes"):
+                model_name = detected_models[0]
+            else:
+                model_name = input("Model name (e.g. gpt-4, llama-3-70b): ").strip()
+        elif len(detected_models) > 1:
+            print("  Available models:")
+            for i, m in enumerate(detected_models, 1):
+                print(f"    {i}. {m}")
+            pick = input(f"  Select model [1-{len(detected_models)}] or type name: ").strip()
+            if pick.isdigit() and 1 <= int(pick) <= len(detected_models):
+                model_name = detected_models[int(pick) - 1]
+            elif pick:
+                model_name = pick
+        else:
+            model_name = input("Model name (e.g. gpt-4, llama-3-70b): ").strip()
+
+        context_length_str = input("Context length in tokens [leave blank for auto-detect]: ").strip()
+    except (KeyboardInterrupt, EOFError):
+        print("\nCancelled.")
+        return
+
+    context_length = None
+    if context_length_str:
+        try:
+            context_length = int(context_length_str.replace(",", "").replace("k", "000").replace("K", "000"))
+            if context_length <= 0:
+                context_length = None
+        except ValueError:
+            print(f"Invalid context length: {context_length_str} — will auto-detect.")
+            context_length = None
 
     if model_name:
         _save_model_choice(model_name)
@@ -2434,6 +2472,12 @@ def cmd_logout(args):
     logout_command(args)
 
 
+def cmd_auth(args):
+    """Manage pooled credentials."""
+    from hermes_cli.auth_commands import auth_command
+    auth_command(args)
+
+
 def cmd_status(args):
     """Show status of all components."""
     from hermes_cli.status import show_status
@@ -3339,7 +3383,7 @@ def _coalesce_session_name_args(argv: list) -> list:
     or a known top-level subcommand.
     """
     _SUBCOMMANDS = {
-        "chat", "model", "gateway", "setup", "whatsapp", "login", "logout",
+        "chat", "model", "gateway", "setup", "whatsapp", "login", "logout", "auth",
         "status", "cron", "doctor", "config", "pairing", "skills", "tools",
         "mcp", "sessions", "insights", "version", "update", "uninstall",
         "profile",
@@ -3628,6 +3672,10 @@ Examples:
     hermes --resume <session_id>  Resume a specific session by ID
     hermes setup                  Run setup wizard
     hermes logout                 Clear stored authentication
+    hermes auth add <provider>    Add a pooled credential
+    hermes auth list              List pooled credentials
+    hermes auth remove <p> <n>    Remove pooled credential by index
+    hermes auth reset <provider>  Clear exhaustion status for a provider
     hermes model                  Select default model
     hermes config                 View configuration
     hermes config edit            Edit config in $EDITOR
@@ -3760,6 +3808,13 @@ For more help on a command:
         action="store_true",
         default=False,
         help="Enable filesystem checkpoints before destructive file operations (use /rollback to restore)"
+    )
+    chat_parser.add_argument(
+        "--max-turns",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Maximum tool-calling iterations per conversation turn (default: 90, or agent.max_turns in config)"
     )
     chat_parser.add_argument(
         "--yolo",
@@ -3945,6 +4000,33 @@ For more help on a command:
         help="Provider to log out from (default: active provider)"
     )
     logout_parser.set_defaults(func=cmd_logout)
+
+    auth_parser = subparsers.add_parser(
+        "auth",
+        help="Manage pooled provider credentials",
+    )
+    auth_subparsers = auth_parser.add_subparsers(dest="auth_action")
+    auth_add = auth_subparsers.add_parser("add", help="Add a pooled credential")
+    auth_add.add_argument("provider", help="Provider id (for example: anthropic, openai-codex, openrouter)")
+    auth_add.add_argument("--type", dest="auth_type", choices=["oauth", "api-key", "api_key"], help="Credential type to add")
+    auth_add.add_argument("--label", help="Optional display label")
+    auth_add.add_argument("--api-key", help="API key value (otherwise prompted securely)")
+    auth_add.add_argument("--portal-url", help="Nous portal base URL")
+    auth_add.add_argument("--inference-url", help="Nous inference base URL")
+    auth_add.add_argument("--client-id", help="OAuth client id")
+    auth_add.add_argument("--scope", help="OAuth scope override")
+    auth_add.add_argument("--no-browser", action="store_true", help="Do not auto-open a browser for OAuth login")
+    auth_add.add_argument("--timeout", type=float, help="OAuth/network timeout in seconds")
+    auth_add.add_argument("--insecure", action="store_true", help="Disable TLS verification for OAuth login")
+    auth_add.add_argument("--ca-bundle", help="Custom CA bundle for OAuth login")
+    auth_list = auth_subparsers.add_parser("list", help="List pooled credentials")
+    auth_list.add_argument("provider", nargs="?", help="Optional provider filter")
+    auth_remove = auth_subparsers.add_parser("remove", help="Remove a pooled credential by index")
+    auth_remove.add_argument("provider", help="Provider id")
+    auth_remove.add_argument("index", type=int, help="1-based credential index")
+    auth_reset = auth_subparsers.add_parser("reset", help="Clear exhaustion status for all credentials for a provider")
+    auth_reset.add_argument("provider", help="Provider id")
+    auth_parser.set_defaults(func=cmd_auth)
 
     # =========================================================================
     # status command

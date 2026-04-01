@@ -505,6 +505,7 @@ class AIAgent:
         honcho_config=None,
         iteration_budget: "IterationBudget" = None,
         fallback_model: Dict[str, Any] = None,
+        credential_pool=None,
         checkpoints_enabled: bool = False,
         checkpoint_max_snapshots: int = 50,
         pass_session_id: bool = False,
@@ -575,6 +576,7 @@ class AIAgent:
         self.skip_context_files = skip_context_files
         self.pass_session_id = pass_session_id
         self.persist_session = persist_session
+        self._credential_pool = credential_pool
         self.log_prefix_chars = log_prefix_chars
         self.log_prefix = f"{log_prefix} " if log_prefix else ""
         # Store effective base URL for feature detection (prompt caching, reasoning, etc.)
@@ -1401,6 +1403,7 @@ class AIAgent:
         content = re.sub(r'<thinking>.*?</thinking>', '', content, flags=re.DOTALL | re.IGNORECASE)
         content = re.sub(r'<reasoning>.*?</reasoning>', '', content, flags=re.DOTALL)
         content = re.sub(r'<REASONING_SCRATCHPAD>.*?</REASONING_SCRATCHPAD>', '', content, flags=re.DOTALL)
+        content = re.sub(r'</?(?:think|thinking|reasoning|REASONING_SCRATCHPAD)>\s*', '', content, flags=re.IGNORECASE)
         return content
 
     def _looks_like_codex_intermediate_ack(
@@ -3249,9 +3252,10 @@ class AIAgent:
             "model": model,
             "instructions": instructions,
             "input": normalized_input,
-            "tools": normalized_tools,
             "store": False,
         }
+        if normalized_tools is not None:
+            normalized["tools"] = normalized_tools
 
         # Pass through reasoning config
         reasoning = api_kwargs.get("reasoning")
@@ -3496,14 +3500,33 @@ class AIAgent:
 
     @staticmethod
     def _is_openai_client_closed(client: Any) -> bool:
+        """Check if an OpenAI client is closed.
+
+        Handles both property and method forms of is_closed:
+        - httpx.Client.is_closed is a bool property
+        - openai.OpenAI.is_closed is a method returning bool
+
+        Prior bug: getattr(client, "is_closed", False) returned the bound method,
+        which is always truthy, causing unnecessary client recreation on every call.
+        """
         from unittest.mock import Mock
 
         if isinstance(client, Mock):
             return False
-        if bool(getattr(client, "is_closed", False)):
-            return True
+
+        is_closed_attr = getattr(client, "is_closed", None)
+        if is_closed_attr is not None:
+            # Handle method (openai SDK) vs property (httpx)
+            if callable(is_closed_attr):
+                if is_closed_attr():
+                    return True
+            elif bool(is_closed_attr):
+                return True
+
         http_client = getattr(client, "_client", None)
-        return bool(getattr(http_client, "is_closed", False))
+        if http_client is not None:
+            return bool(getattr(http_client, "is_closed", False))
+        return False
 
     def _create_openai_client(self, client_kwargs: dict, *, reason: str, shared: bool) -> Any:
         if self.provider == "copilot-acp" or str(client_kwargs.get("base_url", "")).startswith("acp://copilot"):
@@ -3594,6 +3617,8 @@ class AIAgent:
 
     def _run_codex_stream(self, api_kwargs: dict, client: Any = None, on_first_delta: callable = None):
         """Execute one streaming Responses API request and return the final response."""
+        import httpx as _httpx
+
         active_client = client or self._ensure_primary_openai_client(reason="codex_stream_direct")
         max_stream_retries = 1
         has_tool_calls = False
@@ -3627,6 +3652,22 @@ class AIAgent:
                             if reasoning_text:
                                 self._fire_reasoning_delta(reasoning_text)
                     return stream.get_final_response()
+            except (_httpx.RemoteProtocolError, _httpx.ReadTimeout, _httpx.ConnectError, ConnectionError) as exc:
+                if attempt < max_stream_retries:
+                    logger.debug(
+                        "Codex Responses stream transport failed (attempt %s/%s); retrying. %s error=%s",
+                        attempt + 1,
+                        max_stream_retries + 1,
+                        self._client_log_context(),
+                        exc,
+                    )
+                    continue
+                logger.debug(
+                    "Codex Responses stream transport failed; falling back to create(stream=True). %s error=%s",
+                    self._client_log_context(),
+                    exc,
+                )
+                return self._run_codex_create_stream_fallback(api_kwargs, client=active_client)
             except RuntimeError as exc:
                 err_text = str(exc)
                 missing_completed = "response.completed" in err_text
@@ -3788,6 +3829,100 @@ class AIAgent:
         from agent.anthropic_adapter import _is_oauth_token
         self._is_anthropic_oauth = _is_oauth_token(new_token)
         return True
+
+    def _apply_client_headers_for_base_url(self, base_url: str) -> None:
+        from agent.auxiliary_client import _OR_HEADERS
+
+        normalized = (base_url or "").lower()
+        if "openrouter" in normalized:
+            self._client_kwargs["default_headers"] = dict(_OR_HEADERS)
+        elif "api.githubcopilot.com" in normalized:
+            from hermes_cli.models import copilot_default_headers
+
+            self._client_kwargs["default_headers"] = copilot_default_headers()
+        elif "api.kimi.com" in normalized:
+            self._client_kwargs["default_headers"] = {"User-Agent": "KimiCLI/1.3"}
+        else:
+            self._client_kwargs.pop("default_headers", None)
+
+    def _swap_credential(self, entry) -> None:
+        runtime_key = getattr(entry, "runtime_api_key", None) or getattr(entry, "access_token", "")
+        runtime_base = getattr(entry, "runtime_base_url", None) or getattr(entry, "base_url", None) or self.base_url
+
+        if self.api_mode == "anthropic_messages":
+            from agent.anthropic_adapter import build_anthropic_client, _is_oauth_token
+
+            try:
+                self._anthropic_client.close()
+            except Exception:
+                pass
+
+            self._anthropic_api_key = runtime_key
+            self._anthropic_base_url = runtime_base
+            self._anthropic_client = build_anthropic_client(runtime_key, runtime_base)
+            self._is_anthropic_oauth = _is_oauth_token(runtime_key) if self.provider == "anthropic" else False
+            self.api_key = runtime_key
+            self.base_url = runtime_base
+            return
+
+        self.api_key = runtime_key
+        self.base_url = runtime_base.rstrip("/") if isinstance(runtime_base, str) else runtime_base
+        self._client_kwargs["api_key"] = self.api_key
+        self._client_kwargs["base_url"] = self.base_url
+        self._apply_client_headers_for_base_url(self.base_url)
+        self._replace_primary_openai_client(reason="credential_rotation")
+
+    def _recover_with_credential_pool(
+        self,
+        *,
+        status_code: Optional[int],
+        has_retried_429: bool,
+    ) -> tuple[bool, bool]:
+        """Attempt credential recovery via pool rotation.
+
+        Returns (recovered, has_retried_429).
+        On 429: first occurrence retries same credential (sets flag True).
+                second consecutive 429 rotates to next credential (resets flag).
+        On 402: immediately rotates (billing exhaustion won't resolve with retry).
+        On 401: attempts token refresh before rotating.
+        """
+        pool = self._credential_pool
+        if pool is None or status_code is None:
+            return False, has_retried_429
+
+        if status_code == 402:
+            next_entry = pool.mark_exhausted_and_rotate(status_code=402)
+            if next_entry is not None:
+                logger.info(f"Credential 402 (billing) — rotated to pool entry {getattr(next_entry, 'id', '?')}")
+                self._swap_credential(next_entry)
+                return True, False
+            return False, has_retried_429
+
+        if status_code == 429:
+            if not has_retried_429:
+                return False, True
+            next_entry = pool.mark_exhausted_and_rotate(status_code=429)
+            if next_entry is not None:
+                logger.info(f"Credential 429 (rate limit) — rotated to pool entry {getattr(next_entry, 'id', '?')}")
+                self._swap_credential(next_entry)
+                return True, False
+            return False, True
+
+        if status_code == 401:
+            refreshed = pool.try_refresh_current()
+            if refreshed is not None:
+                logger.info(f"Credential 401 — refreshed pool entry {getattr(refreshed, 'id', '?')}")
+                self._swap_credential(refreshed)
+                return True, has_retried_429
+            # Refresh failed — rotate to next credential instead of giving up.
+            # The failed entry is already marked exhausted by try_refresh_current().
+            next_entry = pool.mark_exhausted_and_rotate(status_code=401)
+            if next_entry is not None:
+                logger.info(f"Credential 401 (refresh failed) — rotated to pool entry {getattr(next_entry, 'id', '?')}")
+                self._swap_credential(next_entry)
+                return True, False
+
+        return False, has_retried_429
 
     def _anthropic_messages_create(self, api_kwargs: dict):
         if self.api_mode == "anthropic_messages":
@@ -5304,6 +5439,15 @@ class AIAgent:
             if _post_progress < 0.85:
                 self._context_pressure_warned = False
 
+        # Clear the file-read dedup cache.  After compression the original
+        # read content is summarised away — if the model re-reads the same
+        # file it needs the full content, not a "file unchanged" stub.
+        try:
+            from tools.file_tools import reset_file_dedup
+            reset_file_dedup(task_id)
+        except Exception:
+            pass
+
         return compressed, new_system_prompt
 
     def _execute_tool_calls(self, assistant_message, messages: list, effective_task_id: str, api_call_count: int = 0) -> None:
@@ -6519,6 +6663,7 @@ class AIAgent:
             codex_auth_retry_attempted = False
             anthropic_auth_retry_attempted = False
             nous_auth_retry_attempted = False
+            has_retried_429 = False
             restart_with_compressed_messages = False
             restart_with_length_continuation = False
 
@@ -6954,6 +7099,7 @@ class AIAgent:
                             if not self.quiet_mode:
                                 self._vprint(f"{self.log_prefix}   💾 Cache: {cached:,}/{prompt:,} tokens ({hit_pct:.0f}% hit, {written:,} written)")
                     
+                    has_retried_429 = False  # Reset on success
                     break  # Success, exit retry loop
 
                 except InterruptedError:
@@ -6996,6 +7142,12 @@ class AIAgent:
                         # prompt or prefill.  Fall through to normal error path.
 
                     status_code = getattr(api_error, "status_code", None)
+                    recovered_with_pool, has_retried_429 = self._recover_with_credential_pool(
+                        status_code=status_code,
+                        has_retried_429=has_retried_429,
+                    )
+                    if recovered_with_pool:
+                        continue
                     if (
                         self.api_mode == "codex_responses"
                         and self.provider == "openai-codex"
@@ -7104,10 +7256,17 @@ class AIAgent:
                         or "quota" in error_msg
                     )
                     if is_rate_limited and self._fallback_index < len(self._fallback_chain):
-                        self._emit_status("⚠️ Rate limited — switching to fallback provider...")
-                        if self._try_activate_fallback():
-                            retry_count = 0
-                            continue
+                        # Don't eagerly fallback if credential pool rotation may
+                        # still recover.  The pool's retry-then-rotate cycle needs
+                        # at least one more attempt to fire — jumping to a fallback
+                        # provider here short-circuits it.
+                        pool = self._credential_pool
+                        pool_may_recover = pool is not None and pool.has_available()
+                        if not pool_may_recover:
+                            self._emit_status("⚠️ Rate limited — switching to fallback provider...")
+                            if self._try_activate_fallback():
+                                retry_count = 0
+                                continue
 
                     is_payload_too_large = (
                         status_code == 413
