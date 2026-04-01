@@ -434,6 +434,40 @@ class AsyncAnthropicAuxiliaryClient:
         self.base_url = sync_wrapper.base_url
 
 
+class _AsyncTinfoilCompletionsAdapter:
+    """Async wrapper for sync Tinfoil chat.completions calls."""
+
+    def __init__(self, sync_completions: Any):
+        self._sync = sync_completions
+
+    async def create(self, **kwargs) -> Any:
+        import asyncio
+
+        return await asyncio.to_thread(self._sync.create, **kwargs)
+
+
+class _AsyncTinfoilChatShim:
+    def __init__(self, adapter: _AsyncTinfoilCompletionsAdapter):
+        self.completions = adapter
+
+
+class AsyncTinfoilAuxiliaryClient:
+    """Async-compatible wrapper over the sync Tinfoil SDK client."""
+
+    def __init__(self, sync_client: Any):
+        self._sync_client = sync_client
+        self.chat = _AsyncTinfoilChatShim(
+            _AsyncTinfoilCompletionsAdapter(sync_client.chat.completions)
+        )
+        self.api_key = getattr(sync_client, "api_key", None)
+        self.base_url = getattr(sync_client, "base_url", "https://inference.tinfoil.sh/v1")
+
+    def close(self) -> None:
+        close_fn = getattr(self._sync_client, "close", None)
+        if callable(close_fn):
+            close_fn()
+
+
 def _read_nous_auth() -> Optional[dict]:
     """Read and validate ~/.hermes/auth.json for an active Nous provider.
 
@@ -501,6 +535,9 @@ def _resolve_api_key_provider() -> Tuple[Optional[OpenAI], Optional[str]]:
 
     Returns (client, model) for the first provider with usable runtime
     credentials, or (None, None) if none are configured.
+
+    Tinfoil is intentionally excluded from this generic auto chain. It must
+    only be selected explicitly so confidential-mode routing stays auditable.
     """
     try:
         from hermes_cli.auth import PROVIDER_REGISTRY, resolve_api_key_provider_credentials
@@ -510,6 +547,8 @@ def _resolve_api_key_provider() -> Tuple[Optional[OpenAI], Optional[str]]:
 
     for provider_id, pconfig in PROVIDER_REGISTRY.items():
         if pconfig.auth_type != "api_key":
+            continue
+        if provider_id == "tinfoil":
             continue
         if provider_id == "anthropic":
             return _try_anthropic()
@@ -705,7 +744,7 @@ def _try_anthropic() -> Tuple[Optional[Any], Optional[str]]:
     return AnthropicAuxiliaryClient(real_client, model, token, base_url, is_oauth=is_oauth), model
 
 
-def _try_tinfoil() -> Tuple[Optional[Any], Optional[str]]:
+def _try_tinfoil(*, suppress_errors: bool = True) -> Tuple[Optional[Any], Optional[str]]:
     """Try to build a Tinfoil auxiliary client from env credentials."""
     api_key = os.getenv("TINFOIL_API_KEY") or os.getenv("TINFOIL_TOKEN")
     if not api_key:
@@ -717,6 +756,8 @@ def _try_tinfoil() -> Tuple[Optional[Any], Optional[str]]:
         logger.debug("Auxiliary client: Tinfoil confidential (%s)", model)
         return client, model
     except Exception as exc:
+        if not suppress_errors:
+            raise
         logger.debug("Tinfoil auxiliary client build failed: %s", exc)
         return None, None
 
@@ -969,6 +1010,19 @@ def resolve_provider_client(
         final_model = model or default
         return (_to_async_client(client, final_model) if async_mode
                 else (client, final_model))
+
+    # ── Tinfoil (explicit only, fail closed) ─────────────────────────
+    if provider == "tinfoil":
+        client, default = _try_tinfoil(suppress_errors=False)
+        if client is None:
+            logger.warning(
+                "resolve_provider_client: tinfoil requested but TINFOIL_API_KEY is not set"
+            )
+            return None, None
+        final_model = model or default
+        if async_mode:
+            return AsyncTinfoilAuxiliaryClient(client), final_model
+        return client, final_model
 
     # ── Custom endpoint (OPENAI_BASE_URL + OPENAI_API_KEY) ───────────
     if provider == "custom":

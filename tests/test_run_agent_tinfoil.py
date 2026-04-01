@@ -72,6 +72,30 @@ class TestTinfoilNonStreamingCall:
         assert agent.client is None
 
 
+class TestTinfoilStreamingCall:
+    def test_streaming_dispatches_to_tinfoil_adapter(self):
+        agent, _ = _make_tinfoil_agent()
+        chunk1 = SimpleNamespace(
+            choices=[SimpleNamespace(delta=SimpleNamespace(content="hel", tool_calls=None), finish_reason=None)],
+            model="llama3-3-70b",
+        )
+        chunk2 = SimpleNamespace(
+            choices=[SimpleNamespace(delta=SimpleNamespace(content="lo", tool_calls=None), finish_reason="stop")],
+            model="llama3-3-70b",
+        )
+
+        with patch(
+            "agent.tinfoil_adapter.stream_chat_completion",
+            return_value=iter([chunk1, chunk2]),
+        ) as mock_stream:
+            response = agent._interruptible_streaming_api_call(
+                {"model": "llama3-3-70b", "messages": []}
+            )
+
+        mock_stream.assert_called_once()
+        assert response.choices[0].message.content == "hello"
+
+
 class TestTinfoilFailClosed:
     def test_tinfoil_error_does_not_fall_back_to_openrouter(self):
         """An error in tinfoil mode must not silently route to OpenRouter."""
@@ -85,3 +109,12 @@ class TestTinfoilFailClosed:
                 })
         # Verify no OpenAI client was created as a fallback
         assert agent.client is None
+
+    def test_provider_fallback_is_disabled_when_tinfoil_active(self):
+        agent, _ = _make_tinfoil_agent()
+        agent._fallback_chain = [{"provider": "openrouter", "model": "anthropic/claude-sonnet-4"}]
+        agent._fallback_index = 0
+
+        assert agent._try_activate_fallback() is False
+        assert agent.provider == "tinfoil"
+        assert agent.api_mode == "tinfoil"

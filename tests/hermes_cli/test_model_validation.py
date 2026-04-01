@@ -195,6 +195,19 @@ class TestProviderModelIds:
         assert "gpt-5.4" in ids
         assert "copilot-acp" not in ids
 
+    def test_tinfoil_prefers_live_catalog(self):
+        with patch(
+            "hermes_cli.auth.resolve_api_key_provider_credentials",
+            return_value={"api_key": "tf-key"},
+        ), patch(
+            "agent.tinfoil_adapter.list_models",
+            return_value=["llama3-3-70b", "mistral-7b-instruct"],
+        ):
+            assert provider_model_ids("tinfoil") == [
+                "llama3-3-70b",
+                "mistral-7b-instruct",
+            ]
+
 
 # -- fetch_api_models --------------------------------------------------------
 

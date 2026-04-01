@@ -1,0 +1,7 @@
+# Hermes Agent — Enclava deployment config
+# Minimal config enabling the API server and dashboard.
+# LLM provider and platform settings are configured through the dashboard.
+
+platforms:
+  api_server:
+    enabled: true

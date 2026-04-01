@@ -3981,8 +3981,11 @@ class AIAgent:
             if self.api_mode == "tinfoil":
                 # Do NOT put the shared tinfoil client into the holder — the
                 # holder's cleanup paths call close() which would break all
-                # future requests.  Call create() directly instead.
-                stream = self._tinfoil_client.chat.completions.create(**stream_kwargs)
+                # future requests.  Keep streaming on the dedicated Tinfoil
+                # adapter path instead of the generic OpenAI client path.
+                from agent.tinfoil_adapter import stream_chat_completion
+
+                stream = stream_chat_completion(self._tinfoil_client, **stream_kwargs)
             else:
                 request_client_holder["client"] = self._create_request_openai_client(
                     reason="chat_completion_stream_request"
@@ -4393,6 +4396,12 @@ class AIAgent:
         auth resolution and client construction — no duplicated provider→key
         mappings.
         """
+        if self.api_mode == "tinfoil":
+            logging.warning(
+                "Tinfoil mode is active; refusing provider fallback to preserve confidentiality."
+            )
+            return False
+
         if self._fallback_index >= len(self._fallback_chain):
             return False
 
@@ -4407,24 +4416,37 @@ class AIAgent:
         # raw_codex=True because the main agent needs direct responses.stream()
         # access for Codex providers.
         try:
-            from agent.auxiliary_client import resolve_provider_client
-            fb_client, _ = resolve_provider_client(
-                fb_provider, model=fb_model, raw_codex=True)
-            if fb_client is None:
-                logging.warning(
-                    "Fallback to %s failed: provider not configured",
-                    fb_provider)
-                return self._try_activate_fallback()  # try next in chain
+            fb_runtime = None
+            if fb_provider == "tinfoil":
+                from agent.tinfoil_adapter import build_client as _tinfoil_build
+                from hermes_cli.runtime_provider import resolve_runtime_provider
 
-            # Determine api_mode from provider / base URL
-            fb_api_mode = "chat_completions"
-            fb_base_url = str(fb_client.base_url)
-            if fb_provider == "openai-codex":
-                fb_api_mode = "codex_responses"
-            elif fb_provider == "anthropic" or fb_base_url.rstrip("/").lower().endswith("/anthropic"):
-                fb_api_mode = "anthropic_messages"
-            elif self._is_direct_openai_url(fb_base_url):
-                fb_api_mode = "codex_responses"
+                fb_runtime = resolve_runtime_provider(requested="tinfoil")
+                fb_client = _tinfoil_build(fb_runtime["api_key"])
+                fb_api_mode = "tinfoil"
+                fb_base_url = str(fb_runtime.get("base_url") or "")
+            else:
+                from agent.auxiliary_client import resolve_provider_client
+
+                fb_client, _ = resolve_provider_client(
+                    fb_provider, model=fb_model, raw_codex=True
+                )
+                if fb_client is None:
+                    logging.warning(
+                        "Fallback to %s failed: provider not configured",
+                        fb_provider,
+                    )
+                    return self._try_activate_fallback()  # try next in chain
+
+                # Determine api_mode from provider / base URL
+                fb_api_mode = "chat_completions"
+                fb_base_url = str(fb_client.base_url)
+                if fb_provider == "openai-codex":
+                    fb_api_mode = "codex_responses"
+                elif fb_provider == "anthropic" or fb_base_url.rstrip("/").lower().endswith("/anthropic"):
+                    fb_api_mode = "anthropic_messages"
+                elif self._is_direct_openai_url(fb_base_url):
+                    fb_api_mode = "codex_responses"
 
             old_model = self.model
             self.model = fb_model
@@ -4442,6 +4464,12 @@ class AIAgent:
                 self._anthropic_base_url = getattr(fb_client, "base_url", None)
                 self._anthropic_client = build_anthropic_client(effective_key, self._anthropic_base_url)
                 self._is_anthropic_oauth = _is_oauth_token(effective_key)
+                self.client = None
+                self._client_kwargs = {}
+            elif fb_api_mode == "tinfoil":
+                self.api_key = str((fb_runtime or {}).get("api_key") or "")
+                self._tinfoil_client = fb_client
+                self._anthropic_client = None
                 self.client = None
                 self._client_kwargs = {}
             else:

@@ -172,6 +172,21 @@ async def handle_llm_verify_key(request: "web.Request") -> "web.Response":
         return aiohttp_jinja2.render_template(
             "settings/_model_options.html", request, ctx)
 
+    # Tinfoil special case — uses its own SDK with enclave attestation
+    if provider_id == "tinfoil":
+        try:
+            from agent.tinfoil_adapter import list_models as tinfoil_list_models
+            model_ids = tinfoil_list_models(api_key)
+            if not model_ids:
+                ctx["error"] = "No models returned. Check your API key."
+            else:
+                ctx["models"] = model_ids
+        except Exception as exc:
+            logger.debug("Tinfoil model fetch failed: %s", exc)
+            ctx["error"] = f"Tinfoil verification failed: {exc}"
+        return aiohttp_jinja2.render_template(
+            "settings/_model_options.html", request, ctx)
+
     # All other api_key providers: fetch from OpenAI-compatible /models endpoint
     base_url = registry_entry.inference_base_url.rstrip("/")
     models_url = f"{base_url}/models"

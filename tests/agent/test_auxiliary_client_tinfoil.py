@@ -56,3 +56,39 @@ class TestResolveForcedProviderTinfoil:
             # Vision task for tinfoil should return None (unsupported), not fall to OpenRouter
             client, model = resolve_provider_client("tinfoil", task="vision")
         assert client is None
+
+    def test_explicit_tinfoil_uses_tinfoil_sdk_not_openai(self, monkeypatch):
+        monkeypatch.setenv("TINFOIL_API_KEY", "tf-test-key")
+        mock_client = MagicMock()
+        with patch("agent.tinfoil_adapter.build_client", return_value=mock_client) as mock_build, \
+             patch("agent.auxiliary_client.OpenAI") as mock_openai:
+            from agent.auxiliary_client import resolve_provider_client
+
+            client, model = resolve_provider_client("tinfoil", model="llama3-3-70b")
+
+        assert client is mock_client
+        assert model == "llama3-3-70b"
+        mock_build.assert_called_once_with("tf-test-key")
+        mock_openai.assert_not_called()
+
+    def test_auto_mode_never_selects_tinfoil(self, monkeypatch):
+        monkeypatch.setenv("TINFOIL_API_KEY", "tf-test-key")
+        fake_pconfig = SimpleNamespace(
+            auth_type="api_key",
+            name="Tinfoil",
+            inference_base_url="https://inference.tinfoil.sh/v1",
+        )
+        with patch(
+            "hermes_cli.auth.PROVIDER_REGISTRY",
+            {"tinfoil": fake_pconfig},
+        ), patch(
+            "hermes_cli.auth.resolve_api_key_provider_credentials",
+            return_value={"api_key": "tf-test-key"},
+        ), patch("agent.auxiliary_client.OpenAI") as mock_openai:
+            from agent.auxiliary_client import _resolve_api_key_provider
+
+            client, model = _resolve_api_key_provider()
+
+        assert client is None
+        assert model is None
+        mock_openai.assert_not_called()

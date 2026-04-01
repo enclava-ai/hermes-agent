@@ -146,6 +146,30 @@ class TestTryActivateFallback:
             assert agent.provider == "minimax"
             assert agent.client is mock_client
 
+    def test_activates_tinfoil_fallback(self):
+        agent = _make_agent(
+            fallback_model={"provider": "tinfoil", "model": "llama3-3-70b"},
+        )
+        mock_client = MagicMock()
+        with patch(
+            "hermes_cli.runtime_provider.resolve_runtime_provider",
+            return_value={
+                "provider": "tinfoil",
+                "api_mode": "tinfoil",
+                "api_key": "tf-key",
+                "base_url": "https://inference.tinfoil.sh/v1",
+            },
+        ), patch(
+            "agent.tinfoil_adapter.build_client",
+            return_value=mock_client,
+        ):
+            assert agent._try_activate_fallback() is True
+            assert agent.model == "llama3-3-70b"
+            assert agent.provider == "tinfoil"
+            assert agent.api_mode == "tinfoil"
+            assert agent.client is None
+            assert agent._tinfoil_client is mock_client
+
     def test_only_fires_once(self):
         agent = _make_agent(
             fallback_model={"provider": "openrouter", "model": "anthropic/claude-sonnet-4"},

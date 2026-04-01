@@ -11,6 +11,34 @@ It uses:
 
 Hermes itself serves plain HTTP inside the pod.
 
+## Generator Integration
+
+Hermes can now target the generic tenant scaffold directly.
+
+For the existing shared component in `enclava-tenant-manifests`, use:
+
+```bash
+python3 /path/to/hermes-agent/scripts/deploy_enclava_confidential_app.py \
+  --tenant flowforge-1 \
+  --instance-name hermes-agent \
+  --image ghcr.io/your-org/hermes-agent-enclava:latest
+```
+
+That wrapper calls `enclava-tenant-manifests/scripts/deploy-confidential-app.py` with Hermes defaults and reuses the checked-in `components/hermes-agent` component by default.
+
+For a brand-new generated component name, disable reuse:
+
+```bash
+python3 /path/to/hermes-agent/scripts/deploy_enclava_confidential_app.py \
+  --tenant flowforge-1 \
+  --instance-name hermes-agent-canary \
+  --app-name hermes-agent-canary \
+  --image ghcr.io/your-org/hermes-agent-enclava:latest \
+  --no-reuse-component
+```
+
+That path injects `deploy/enclava/startup.sh` into the generated startup ConfigMap, so the default confidential-workload bootstrap still launches Hermes correctly.
+
 ## Runtime Contract
 
 Hermes must run with:
@@ -35,6 +63,7 @@ The main API root is:
 The repo now includes a platform-specific wrapper:
 
 - `/opt/hermes/docker/entrypoint-enclava-api.sh`
+- `deploy/enclava/startup.sh`
 
 It does three things:
 

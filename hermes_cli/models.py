@@ -595,7 +595,8 @@ def _resolve_copilot_catalog_api_key() -> str:
 def provider_model_ids(provider: Optional[str]) -> list[str]:
     """Return the best known model catalog for a provider.
 
-    Tries live API endpoints for providers that support them (Codex, Nous),
+    Tries live API endpoints for providers that support them (Codex, Nous,
+    Tinfoil),
     falling back to static lists.
     """
     normalized = normalize_provider(provider)
@@ -633,6 +634,19 @@ def provider_model_ids(provider: Optional[str]) -> list[str]:
         live = _fetch_ai_gateway_models()
         if live:
             return live
+    if normalized == "tinfoil":
+        try:
+            from hermes_cli.auth import resolve_api_key_provider_credentials
+            from agent.tinfoil_adapter import list_models as _list_tinfoil_models
+
+            creds = resolve_api_key_provider_credentials("tinfoil")
+            api_key = str(creds.get("api_key") or "").strip()
+            if api_key:
+                live = _list_tinfoil_models(api_key)
+                if live:
+                    return live
+        except Exception:
+            pass
     if normalized == "custom":
         base_url = _get_custom_base_url()
         if base_url:
