@@ -30,6 +30,15 @@ try:
     _DEPS_AVAILABLE = True
 except ImportError:
     _DEPS_AVAILABLE = False
+    # Provide a no-op decorator so module-level @aiohttp_jinja2.template()
+    # doesn't crash when dashboard deps are not installed (e.g. CI)
+    class _NoOpJinja2:
+        @staticmethod
+        def template(_name):
+            def _decorator(fn):
+                return fn
+            return _decorator
+    aiohttp_jinja2 = _NoOpJinja2()  # type: ignore[assignment]
 
 # --- Constants ---
 
