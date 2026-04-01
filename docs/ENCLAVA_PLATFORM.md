@@ -25,6 +25,7 @@ python3 /path/to/hermes-agent/scripts/deploy_enclava_confidential_app.py \
 ```
 
 That wrapper calls `enclava-tenant-manifests/scripts/deploy-confidential-app.py` with Hermes defaults and reuses the checked-in `components/hermes-agent` component by default.
+In reuse mode it also updates the shared component's pinned workload image, attestation-proxy image, and attestation policy env vars in `components/hermes-agent/statefulset.yaml` so the deployed workload actually rolls to the requested Hermes image.
 
 For a brand-new generated component name, disable reuse:
 
@@ -48,6 +49,8 @@ Hermes must run with:
 - `API_SERVER_PORT=8000`
 - `API_SERVER_KEY=<required>`
 - `HERMES_HOME=/opt/data`
+
+`HERMES_HOME` is respected by both the Enclava wrapper entrypoint and the inner Docker entrypoint; it is no longer only a documentation-level contract.
 
 The health endpoint is:
 
@@ -96,6 +99,12 @@ Typical useful additions:
 - `BROWSERBASE_PROJECT_ID`
 - `VOICE_TOOLS_OPENAI_KEY`
 - messaging credentials only if you actually enable those platforms
+
+If you publish attestation policy artifacts from the Enclava GitHub workflow, pass these to the deploy helper so the shared component advertises them through the attestation sidecar:
+
+- `--attestation-policy-url`
+- `--attestation-policy-sha256`
+- `--attestation-policy-signature-url`
 
 ## Recommended Enclava App Settings
 
