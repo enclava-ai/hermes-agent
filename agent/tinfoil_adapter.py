@@ -96,7 +96,9 @@ def list_models(api_key: str) -> List[str]:
     """
     try:
         client = build_client(api_key)
-        models_page = client.models.list()
+        # TinfoilAI wraps an inner OpenAI client as self.client but does not
+        # proxy the models resource onto itself — access it via client.client.
+        models_page = client.client.models.list()
         return [m.id for m in models_page.data if getattr(m, "id", None)]
     except Exception as exc:
         logger.debug("Tinfoil model listing failed: %s", exc)
