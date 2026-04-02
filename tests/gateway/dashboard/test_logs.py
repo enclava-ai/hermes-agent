@@ -2,6 +2,9 @@
 import asyncio
 import json
 import logging
+import os
+import tempfile
+from pathlib import Path
 
 import pytest
 
@@ -121,3 +124,107 @@ class TestBroadcastLogHandler:
         finally:
             handler.unsubscribe(queue)
             logger.removeHandler(handler)
+
+
+class TestParseLogLine:
+    def test_valid_info_line(self):
+        from gateway.dashboard.logs import parse_log_line
+
+        line = "2026-04-02 14:03:22,451 INFO gateway.run: Platform telegram started"
+        result = parse_log_line(line)
+        assert result == {
+            "ts": "2026-04-02 14:03:22,451",
+            "level": "INFO",
+            "logger": "gateway.run",
+            "msg": "Platform telegram started",
+        }
+
+    def test_valid_warning_line(self):
+        from gateway.dashboard.logs import parse_log_line
+
+        line = "2026-04-02 14:03:22,451 WARNING gateway.session: bad JSON"
+        result = parse_log_line(line)
+        assert result["level"] == "WARNING"
+        assert result["msg"] == "bad JSON"
+
+    def test_malformed_line_returns_fallback(self):
+        from gateway.dashboard.logs import parse_log_line
+
+        line = "some garbled text without structure"
+        result = parse_log_line(line)
+        assert result == {
+            "ts": "",
+            "level": "INFO",
+            "logger": "",
+            "msg": "some garbled text without structure",
+        }
+
+    def test_empty_line(self):
+        from gateway.dashboard.logs import parse_log_line
+
+        result = parse_log_line("")
+        assert result["msg"] == ""
+        assert result["ts"] == ""
+
+    def test_crlf_stripped(self):
+        from gateway.dashboard.logs import parse_log_line
+
+        line = "2026-04-02 14:03:22,451 ERROR gateway.run: boom\r\n"
+        result = parse_log_line(line)
+        assert result["level"] == "ERROR"
+        assert result["msg"] == "boom"
+
+    def test_schema_four_string_fields(self):
+        from gateway.dashboard.logs import parse_log_line
+
+        result = parse_log_line("anything")
+        assert set(result.keys()) == {"ts", "level", "logger", "msg"}
+        for val in result.values():
+            assert isinstance(val, str)
+
+
+class TestTailLogFile:
+    def test_tail_returns_last_n_lines(self):
+        from gateway.dashboard.logs import tail_log_file
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".log", delete=False) as f:
+            for i in range(100):
+                f.write(f"2026-04-02 10:00:{i:02d},000 INFO test: line {i}\n")
+            path = Path(f.name)
+        try:
+            lines = tail_log_file(path, num_lines=10)
+            assert len(lines) == 10
+            assert "line 90" in lines[0]
+            assert "line 99" in lines[9]
+        finally:
+            os.unlink(path)
+
+    def test_tail_file_smaller_than_requested(self):
+        from gateway.dashboard.logs import tail_log_file
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".log", delete=False) as f:
+            f.write("2026-04-02 10:00:00,000 INFO test: only line\n")
+            path = Path(f.name)
+        try:
+            lines = tail_log_file(path, num_lines=1000)
+            assert len(lines) == 1
+            assert "only line" in lines[0]
+        finally:
+            os.unlink(path)
+
+    def test_tail_missing_file_returns_empty(self):
+        from gateway.dashboard.logs import tail_log_file
+
+        lines = tail_log_file(Path("/nonexistent/gateway.log"), num_lines=100)
+        assert lines == []
+
+    def test_tail_empty_file_returns_empty(self):
+        from gateway.dashboard.logs import tail_log_file
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".log", delete=False) as f:
+            path = Path(f.name)
+        try:
+            lines = tail_log_file(path, num_lines=100)
+            assert lines == []
+        finally:
+            os.unlink(path)

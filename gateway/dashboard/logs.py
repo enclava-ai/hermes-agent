@@ -12,6 +12,7 @@ import asyncio
 import json
 import logging
 import re
+from pathlib import Path
 from typing import Optional
 
 from agent.redact import RedactingFormatter
@@ -91,3 +92,67 @@ class BroadcastLogHandler(logging.Handler):
         ct = time.localtime(record.created)
         t = time.strftime("%Y-%m-%d %H:%M:%S", ct)
         return f"{t},{int(record.msecs):03d}"
+
+
+def parse_log_line(line: str) -> dict:
+    """Parse a plain-text log line into the standard event dict.
+
+    Returns a dict with keys: ts, level, logger, msg (all strings).
+    Malformed lines get fallback values.
+    """
+    line = line.rstrip("\r\n")
+    match = _LOG_LINE_RE.match(line)
+    if match:
+        return {
+            "ts": match.group(1),
+            "level": match.group(2),
+            "logger": match.group(3),
+            "msg": match.group(4),
+        }
+    return {"ts": "", "level": "INFO", "logger": "", "msg": line}
+
+
+def tail_log_file(path: Path, num_lines: int = 1000) -> list[str]:
+    """Read the last num_lines lines from a log file using reverse-seek.
+
+    Returns a list of raw lines (with newlines stripped).
+    Returns empty list if file is missing, empty, or unreadable.
+    """
+    try:
+        if not path.exists() or path.stat().st_size == 0:
+            return []
+    except OSError:
+        return []
+
+    try:
+        with open(path, "rb") as f:
+            f.seek(0, 2)  # seek to end
+            end_pos = f.tell()
+            if end_pos == 0:
+                return []
+
+            lines_found = []
+            block_size = 8192
+            remaining = end_pos
+
+            while remaining > 0 and len(lines_found) < num_lines + 1:
+                read_size = min(block_size, remaining)
+                remaining -= read_size
+                f.seek(remaining)
+                block = f.read(read_size)
+                lines_found = block.split(b"\n") + lines_found[1:]  # merge with existing
+
+            # Filter empty lines and decode
+            text_lines = []
+            for raw in lines_found:
+                raw = raw.rstrip(b"\r")
+                if raw:
+                    try:
+                        text_lines.append(raw.decode("utf-8", errors="replace"))
+                    except Exception:
+                        text_lines.append(raw.decode("latin-1"))
+
+            # Return the last num_lines
+            return text_lines[-num_lines:]
+    except OSError:
+        return []
