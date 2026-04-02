@@ -1,3 +1,202 @@
-<div id="log-container">
-    <p>Log viewer loading...</p>
+<div id="log-viewer">
+    <div class="log-controls">
+        <div class="log-filters">
+            <button class="log-filter-btn active" data-filter="ALL">ALL</button>
+            <button class="log-filter-btn" data-filter="INFO">INFO</button>
+            <button class="log-filter-btn" data-filter="WARNING">WARNING</button>
+            <button class="log-filter-btn" data-filter="ERROR">ERROR</button>
+        </div>
+        <div class="log-status">
+            <span id="log-connection" class="log-dot log-dot--connected" title="Connected"></span>
+            <span id="log-scroll-status">Live</span>
+            <button id="log-jump-bottom" class="log-control-btn" style="display:none">Jump to bottom</button>
+            <button id="log-clear" class="log-control-btn">Clear</button>
+        </div>
+    </div>
+    <div id="log-container" class="log-container"></div>
 </div>
+
+<script>
+(function() {
+    var MAX_LINES = 5000;
+    var container = document.getElementById('log-container');
+    var connectionDot = document.getElementById('log-connection');
+    var scrollStatus = document.getElementById('log-scroll-status');
+    var jumpBtn = document.getElementById('log-jump-bottom');
+    var clearBtn = document.getElementById('log-clear');
+    var filterBtns = document.querySelectorAll('.log-filter-btn');
+    var activeFilter = 'ALL';
+    var autoScroll = true;
+
+    // -- Cleanup prior instance --
+    if (window._hermesLogCleanup) {
+        window._hermesLogCleanup();
+    }
+
+    // -- EventSource setup --
+    if (window._hermesLogSource) {
+        window._hermesLogSource.close();
+        window._hermesLogSource = null;
+    }
+
+    var es = new EventSource('/dashboard/logs/stream');
+    window._hermesLogSource = es;
+
+    function appendLine(data) {
+        try {
+            var evt = JSON.parse(data);
+        } catch (e) {
+            return;
+        }
+        var div = document.createElement('div');
+        div.className = 'log-line';
+        div.setAttribute('data-level', evt.level || 'INFO');
+
+        var tsSpan = document.createElement('span');
+        tsSpan.className = 'log-ts';
+        tsSpan.textContent = evt.ts || '';
+
+        var lvlSpan = document.createElement('span');
+        lvlSpan.className = 'log-level log-level--' + (evt.level || 'INFO').toLowerCase();
+        lvlSpan.textContent = (evt.level || 'INFO').padEnd(8);
+
+        var loggerSpan = document.createElement('span');
+        loggerSpan.className = 'log-logger';
+        loggerSpan.textContent = evt.logger || '';
+
+        var msgSpan = document.createElement('span');
+        msgSpan.className = 'log-msg';
+        msgSpan.textContent = evt.msg || '';
+
+        div.appendChild(tsSpan);
+        div.appendChild(lvlSpan);
+        div.appendChild(loggerSpan);
+        div.appendChild(document.createTextNode(' '));
+        div.appendChild(msgSpan);
+
+        // Apply current filter
+        if (activeFilter !== 'ALL') {
+            var show = false;
+            if (activeFilter === 'ERROR') {
+                show = (evt.level === 'ERROR' || evt.level === 'CRITICAL');
+            } else {
+                show = (evt.level === activeFilter);
+            }
+            if (!show) div.style.display = 'none';
+        }
+
+        container.appendChild(div);
+
+        // DOM cap
+        while (container.children.length > MAX_LINES) {
+            container.removeChild(container.firstChild);
+        }
+
+        if (autoScroll) {
+            container.scrollTop = container.scrollHeight;
+        }
+    }
+
+    function onMessage(e) {
+        appendLine(e.data);
+    }
+
+    function onOpen() {
+        connectionDot.className = 'log-dot log-dot--connected';
+        connectionDot.title = 'Connected';
+    }
+
+    function onError() {
+        connectionDot.className = 'log-dot log-dot--disconnected';
+        connectionDot.title = 'Reconnecting...';
+        // On reconnect, clear container (server resends history)
+        if (es.readyState === EventSource.CONNECTING) {
+            container.innerHTML = '';
+        }
+    }
+
+    es.addEventListener('message', onMessage);
+    es.addEventListener('open', onOpen);
+    es.addEventListener('error', onError);
+
+    // -- Scroll detection --
+    function onScroll() {
+        var atBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 20;
+        if (atBottom) {
+            autoScroll = true;
+            scrollStatus.textContent = 'Live';
+            jumpBtn.style.display = 'none';
+        } else {
+            autoScroll = false;
+            scrollStatus.textContent = 'Paused';
+            jumpBtn.style.display = '';
+        }
+    }
+    container.addEventListener('scroll', onScroll);
+
+    // -- Jump to bottom --
+    function onJump() {
+        container.scrollTop = container.scrollHeight;
+        autoScroll = true;
+        scrollStatus.textContent = 'Live';
+        jumpBtn.style.display = 'none';
+    }
+    jumpBtn.addEventListener('click', onJump);
+
+    // -- Clear --
+    function onClear() {
+        container.innerHTML = '';
+    }
+    clearBtn.addEventListener('click', onClear);
+
+    // -- Level filter --
+    function onFilter(e) {
+        var btn = e.target.closest('.log-filter-btn');
+        if (!btn) return;
+        activeFilter = btn.getAttribute('data-filter');
+        filterBtns.forEach(function(b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+
+        // Apply filter to all existing lines
+        var lines = container.querySelectorAll('.log-line');
+        for (var i = 0; i < lines.length; i++) {
+            var level = lines[i].getAttribute('data-level');
+            var show = true;
+            if (activeFilter !== 'ALL') {
+                if (activeFilter === 'ERROR') {
+                    show = (level === 'ERROR' || level === 'CRITICAL');
+                } else {
+                    show = (level === activeFilter);
+                }
+            }
+            lines[i].style.display = show ? '' : 'none';
+        }
+    }
+    document.querySelector('.log-filters').addEventListener('click', onFilter);
+
+    // -- Cleanup function --
+    function cleanup() {
+        if (es) {
+            es.removeEventListener('message', onMessage);
+            es.removeEventListener('open', onOpen);
+            es.removeEventListener('error', onError);
+            es.close();
+        }
+        container.removeEventListener('scroll', onScroll);
+        jumpBtn.removeEventListener('click', onJump);
+        clearBtn.removeEventListener('click', onClear);
+        document.querySelector('.log-filters')?.removeEventListener('click', onFilter);
+        window._hermesLogSource = null;
+        window._hermesLogCleanup = null;
+    }
+    window._hermesLogCleanup = cleanup;
+
+    // -- HTMX cleanup on tab switch --
+    document.body.addEventListener('htmx:beforeSwap', function htmxCleanup(e) {
+        if (e.detail.target && e.detail.target.id === 'tab-content') {
+            cleanup();
+            document.body.removeEventListener('htmx:beforeSwap', htmxCleanup);
+        }
+    });
+})();
+</script>
