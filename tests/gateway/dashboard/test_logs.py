@@ -228,3 +228,140 @@ class TestTailLogFile:
             assert lines == []
         finally:
             os.unlink(path)
+
+
+# --- Task 3: SSE Stream Endpoint tests ---
+
+from unittest.mock import patch
+
+from aiohttp.test_utils import TestClient, TestServer
+from cryptography.fernet import Fernet
+
+from gateway.dashboard import create_dashboard_app
+from gateway.dashboard.auth import make_session_token, SESSION_COOKIE
+
+
+def _make_app(gateway_runner=None):
+    """Build a dashboard test app with injected Fernet key."""
+    fernet = Fernet(Fernet.generate_key())
+    app = create_dashboard_app(gateway_runner=gateway_runner)
+    app.on_startup.clear()
+
+    async def _inject_fernet(inner_app):
+        inner_app["fernet"] = fernet
+
+    app.on_startup.append(_inject_fernet)
+    return app, fernet
+
+
+def _auth_cookie(fernet):
+    token = make_session_token(fernet)
+    return {SESSION_COOKIE: token}
+
+
+class TestLogsTab:
+    @pytest.mark.asyncio
+    async def test_logs_tab_requires_auth(self):
+        """GET /settings/logs without session redirects to login."""
+        app, fernet = _make_app()
+        async with TestClient(TestServer(app)) as cli:
+            resp = await cli.get("/settings/logs", allow_redirects=False)
+            assert resp.status in (302, 303)
+
+    @pytest.mark.asyncio
+    async def test_logs_tab_renders(self):
+        """GET /settings/logs returns 200 with log container."""
+        app, fernet = _make_app()
+        async with TestClient(TestServer(app)) as cli:
+            cli.session.cookie_jar.update_cookies(_auth_cookie(fernet))
+            resp = await cli.get("/settings/logs")
+            assert resp.status == 200
+            body = await resp.text()
+            assert "log-container" in body
+
+
+class TestLogsStream:
+    @pytest.mark.asyncio
+    async def test_stream_requires_auth(self):
+        """GET /logs/stream without session redirects to login."""
+        app, fernet = _make_app()
+        async with TestClient(TestServer(app)) as cli:
+            resp = await cli.get("/logs/stream", allow_redirects=False)
+            assert resp.status in (302, 303)
+
+    @pytest.mark.asyncio
+    async def test_stream_returns_sse_headers(self):
+        """GET /logs/stream has correct SSE headers."""
+        app, fernet = _make_app()
+        async with TestClient(TestServer(app)) as cli:
+            cli.session.cookie_jar.update_cookies(_auth_cookie(fernet))
+            resp = await cli.get("/logs/stream")
+            assert resp.headers["Content-Type"] == "text/event-stream"
+            assert resp.headers.get("Cache-Control") == "no-cache"
+            assert resp.headers.get("X-Accel-Buffering") == "no"
+            resp.close()
+
+    @pytest.mark.asyncio
+    async def test_stream_sends_history_from_file(self):
+        """Stream endpoint sends history lines from the log file."""
+        app, fernet = _make_app()
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".log", delete=False) as f:
+            f.write("2026-04-02 10:00:00,000 INFO test.mod: history line\n")
+            log_path = Path(f.name)
+
+        try:
+            async with TestClient(TestServer(app)) as cli:
+                cli.session.cookie_jar.update_cookies(_auth_cookie(fernet))
+                with patch("gateway.dashboard.logs._get_log_path", return_value=log_path):
+                    resp = await cli.get("/logs/stream")
+                    # Read the first SSE data line
+                    first_line = b""
+                    async for chunk in resp.content.iter_any():
+                        first_line += chunk
+                        if b"\n\n" in first_line:
+                            break
+                    resp.close()
+
+                    # Parse the first data: line
+                    text = first_line.decode()
+                    for line in text.split("\n"):
+                        if line.startswith("data: "):
+                            payload = json.loads(line[6:])
+                            assert payload["msg"] == "history line"
+                            assert payload["level"] == "INFO"
+                            break
+        finally:
+            os.unlink(log_path)
+
+    @pytest.mark.asyncio
+    async def test_stream_handles_missing_log_file(self):
+        """Stream starts successfully even when log file doesn't exist."""
+        app, fernet = _make_app()
+        async with TestClient(TestServer(app)) as cli:
+            cli.session.cookie_jar.update_cookies(_auth_cookie(fernet))
+            with patch("gateway.dashboard.logs._get_log_path",
+                       return_value=Path("/nonexistent/gateway.log")):
+                resp = await cli.get("/logs/stream")
+                assert resp.status == 200
+                resp.close()
+
+
+class TestHandlerIdempotency:
+    @pytest.mark.asyncio
+    async def test_no_duplicate_handlers(self):
+        """create_dashboard_app() does not add duplicate BroadcastLogHandlers."""
+        from gateway.dashboard.logs import BroadcastLogHandler
+
+        root = logging.getLogger()
+        # Count before
+        before = sum(1 for h in root.handlers if isinstance(h, BroadcastLogHandler))
+        _make_app()
+        _make_app()
+        after = sum(1 for h in root.handlers if isinstance(h, BroadcastLogHandler))
+        # Should add at most 1
+        assert after - before <= 1
+        # Clean up
+        for h in list(root.handlers):
+            if isinstance(h, BroadcastLogHandler):
+                root.removeHandler(h)

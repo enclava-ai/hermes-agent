@@ -94,6 +94,69 @@ class BroadcastLogHandler(logging.Handler):
         return f"{t},{int(record.msecs):03d}"
 
 
+try:
+    import aiohttp_jinja2
+    from aiohttp import web
+except ImportError:
+    pass
+
+
+def _get_log_path() -> Path:
+    """Resolve the gateway log file path (profile-aware)."""
+    from hermes_constants import get_hermes_home
+    return Path(get_hermes_home()) / "logs" / "gateway.log"
+
+
+async def handle_logs_tab(request: "web.Request") -> "web.Response":
+    """GET /settings/logs — render the Logs tab partial."""
+    return aiohttp_jinja2.render_template("settings/_logs.html", request, {})
+
+
+async def handle_logs_stream(request: "web.Request") -> "web.StreamResponse":
+    """GET /logs/stream — SSE endpoint for real-time log streaming.
+
+    Subscribe-first strategy: subscribes to the BroadcastLogHandler before
+    reading history to prevent event loss at the boundary.
+    """
+    response = web.StreamResponse()
+    response.headers["Content-Type"] = "text/event-stream"
+    response.headers["Cache-Control"] = "no-cache"
+    response.headers["X-Accel-Buffering"] = "no"
+    await response.prepare(request)
+
+    handler: Optional[BroadcastLogHandler] = request.app.get("log_handler")
+    queue = handler.subscribe() if handler else None
+
+    try:
+        # Send history from log file
+        log_path = _get_log_path()
+        history_lines = tail_log_file(log_path, num_lines=1000)
+        for line in history_lines:
+            event = parse_log_line(line)
+            data = f"data: {json.dumps(event)}\n\n"
+            await response.write(data.encode())
+
+        if queue is None:
+            return response
+
+        # Stream live events from the queue
+        heartbeat_interval = 30.0
+        while True:
+            try:
+                event = await asyncio.wait_for(queue.get(), timeout=heartbeat_interval)
+                await response.write(f"data: {event}\n\n".encode())
+            except asyncio.TimeoutError:
+                # Send heartbeat comment to keep connection alive
+                await response.write(b": heartbeat\n\n")
+            except (ConnectionResetError, ConnectionError):
+                break
+    finally:
+        if handler and queue:
+            handler.unsubscribe(queue)
+
+    return response
+
+
 def parse_log_line(line: str) -> dict:
     """Parse a plain-text log line into the standard event dict.
 

@@ -100,6 +100,30 @@ def create_dashboard_app(gateway_runner=None) -> "web.Application":
     app.router.add_get("/settings/skills", handle_skills_tab)
     app.router.add_post("/settings/skills/{skill_name}/toggle", handle_skill_toggle)
 
+    # Log streaming tab (Logs viewer)
+    from .logs import handle_logs_tab, handle_logs_stream, BroadcastLogHandler
+    app.router.add_get("/settings/logs", handle_logs_tab)
+    app.router.add_get("/logs/stream", handle_logs_stream)
+
+    # Attach BroadcastLogHandler to root logger (idempotent — skip if already present)
+    root_logger = logging.getLogger()
+    has_broadcast = any(isinstance(h, BroadcastLogHandler) for h in root_logger.handlers)
+    if not has_broadcast:
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+        broadcast_handler = BroadcastLogHandler(loop=loop)
+        broadcast_handler.setLevel(logging.DEBUG)
+        root_logger.addHandler(broadcast_handler)
+        app["log_handler"] = broadcast_handler
+    else:
+        # Reuse existing handler
+        for h in root_logger.handlers:
+            if isinstance(h, BroadcastLogHandler):
+                app["log_handler"] = h
+                break
+
     # Onboarding wizard (Phase 4)
     from .wizard import (
         handle_wizard,
