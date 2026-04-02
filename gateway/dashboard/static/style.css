@@ -910,3 +910,170 @@ form button[type="submit"] {
 ::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.2);
 }
+
+/* ── Log Viewer ──────────────────────────────────── */
+
+#log-viewer {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 220px);
+    min-height: 400px;
+}
+
+.log-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    background: var(--color-surface-1);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius) var(--radius) 0 0;
+    flex-shrink: 0;
+}
+
+.log-filters {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.log-filter-btn {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 0.25rem 0.625rem;
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: var(--transition);
+    margin: 0;
+    line-height: 1.4;
+}
+
+.log-filter-btn:hover {
+    border-color: var(--color-border-hover);
+    color: inherit;
+}
+
+.log-filter-btn.active {
+    background: var(--color-primary-subtle);
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+.log-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+.log-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.log-dot--connected {
+    background: var(--color-success);
+    box-shadow: 0 0 4px var(--color-success);
+}
+
+.log-dot--disconnected {
+    background: var(--color-text-muted);
+}
+
+.log-control-btn {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    padding: 0.2rem 0.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: var(--transition);
+    margin: 0;
+    line-height: 1.4;
+}
+
+.log-control-btn:hover {
+    border-color: var(--color-border-hover);
+    color: inherit;
+}
+
+.log-container {
+    flex: 1;
+    overflow-y: auto;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--color-border);
+    border-top: none;
+    border-radius: 0 0 var(--radius) var(--radius);
+    padding: 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.775rem;
+    line-height: 1.5;
+}
+
+.log-line {
+    display: flex;
+    gap: 0.5rem;
+    padding: 1px 0;
+    white-space: nowrap;
+}
+
+.log-ts {
+    color: var(--color-text-muted);
+    flex-shrink: 0;
+}
+
+.log-level {
+    flex-shrink: 0;
+    font-weight: 600;
+    min-width: 7ch;
+}
+
+.log-level--debug {
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.log-level--info {
+    color: var(--color-text-muted);
+}
+
+.log-level--warning {
+    color: var(--color-warning-text);
+}
+
+.log-level--error,
+.log-level--critical {
+    color: var(--color-error);
+}
+
+.log-logger {
+    color: var(--color-primary);
+    flex-shrink: 0;
+    max-width: 20ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.log-msg {
+    color: rgba(255, 255, 255, 0.85);
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Warning/Error row background tints */
+.log-line[data-level="WARNING"] {
+    background: var(--color-warning-bg);
+}
+
+.log-line[data-level="ERROR"],
+.log-line[data-level="CRITICAL"] {
+    background: var(--color-error-bg);
+}
