@@ -8,44 +8,76 @@
 </article>
 {% endif %}
 
-<p class="skills-summary">{{ enabled_count }} of {{ total_skills }} skills enabled</p>
+<div class="skills-toolbar">
+  <p class="skills-summary">{{ enabled_count }}<span class="skills-summary-sep">/</span>{{ total_skills }} enabled</p>
+  <input type="search" class="skills-search" placeholder="Filter skills..." oninput="filterSkills(this.value)" autocomplete="off">
+</div>
 
 {% if not categories %}
 <p>No skills installed. Place skill directories in <code>~/.hermes/skills/</code> to get started.</p>
 {% endif %}
 
 {% for category in categories %}
-<h4>{{ category.name | capitalize }}</h4>
-<div class="card-grid">
-  {% for skill in category.skills %}
-  <article class="skill-card">
-    <div class="skill-header">
-      <div>
-        <strong>{{ skill.name }}</strong>
-        {% if skill.description %}<small class="skill-desc">{{ skill.description }}</small>{% endif %}
-      </div>
-      <label class="toggle-switch">
+<section class="skill-group" data-category="{{ category.name }}">
+  <button class="skill-group-header" onclick="this.parentElement.classList.toggle('collapsed')" type="button">
+    <span class="skill-group-name">{{ category.name | capitalize }}</span>
+    <span class="skill-group-count">{{ category.skills | length }}</span>
+    <span class="skill-group-chevron"></span>
+  </button>
+  <div class="skill-group-body">
+    {% for skill in category.skills %}
+    <div class="skill-row {% if not skill.enabled %}skill-row--off{% endif %}" data-skill="{{ skill.name }}">
+      <label class="skill-toggle">
         <input type="checkbox"
                {% if skill.enabled %}checked{% endif %}
                {% if managed %}disabled{% endif %}
                hx-post="/dashboard/settings/skills/{{ skill.name }}/toggle"
                hx-target="#tab-content"
                hx-swap="innerHTML">
-        <span class="toggle-slider"></span>
+        <span class="skill-toggle-track">
+          <span class="skill-toggle-knob"></span>
+        </span>
       </label>
+      <div class="skill-info">
+        <span class="skill-name">{{ skill.name }}</span>
+        {% if skill.description %}<span class="skill-desc">{{ skill.description }}</span>{% endif %}
+      </div>
+      {% if skill.settings %}
+      <button class="skill-gear" onclick="this.closest('.skill-row').querySelector('.skill-settings').toggleAttribute('open')" type="button" title="Settings">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+      </button>
+      {% endif %}
     </div>
     {% if skill.settings %}
-    <details class="skill-settings">
-      <summary>Settings</summary>
-      <div class="skill-settings-body">
+    <div class="skill-settings">
+      <div class="skill-settings-inner">
         {% for key, value in skill.settings.items() %}
         <label for="skill-{{ skill.name }}-{{ key }}">{{ key }}</label>
         <input type="text" id="skill-{{ skill.name }}-{{ key }}" value="{{ value }}" disabled>
         {% endfor %}
       </div>
-    </details>
+    </div>
     {% endif %}
-  </article>
-  {% endfor %}
-</div>
+    {% endfor %}
+  </div>
+</section>
 {% endfor %}
+
+<script>
+function filterSkills(query) {
+  var q = query.toLowerCase().trim();
+  document.querySelectorAll('.skill-row').forEach(function(row) {
+    var name = row.dataset.skill || '';
+    var desc = row.querySelector('.skill-desc');
+    var text = name + ' ' + (desc ? desc.textContent : '');
+    row.style.display = text.toLowerCase().indexOf(q) !== -1 ? '' : 'none';
+  });
+  document.querySelectorAll('.skill-settings').forEach(function(s) {
+    if (q) s.removeAttribute('open');
+  });
+  document.querySelectorAll('.skill-group').forEach(function(group) {
+    var visible = group.querySelectorAll('.skill-row[style=""], .skill-row:not([style])').length;
+    group.style.display = visible > 0 ? '' : 'none';
+  });
+}
+</script>

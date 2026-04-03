@@ -493,81 +493,275 @@ nav ul li a[role="button"]:hover {
 
 /* ── Skills ───────────────────────────────────────── */
 
-.skills-summary {
-    color: var(--color-text-muted);
-    font-size: 0.8125rem;
-    margin-bottom: 0.75rem;
-    font-family: var(--font-mono);
+.skills-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
 }
 
-.skill-card {
+.skills-summary {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.875rem;
+    font-family: var(--font-mono);
+    font-weight: 600;
+    margin: 0;
+    white-space: nowrap;
+    letter-spacing: -0.01em;
+}
+
+.skills-summary-sep {
+    opacity: 0.3;
+    margin: 0 0.1em;
+}
+
+.skills-search {
+    max-width: 240px;
+    font-size: 0.8rem !important;
+    padding: 0.35rem 0.65rem !important;
+    margin: 0 !important;
+    background: var(--color-surface-1) !important;
+    border-color: var(--color-border) !important;
+    border-radius: var(--radius) !important;
+}
+
+.skills-search:focus {
+    border-color: var(--color-primary) !important;
+    box-shadow: 0 0 0 3px var(--color-primary-glow) !important;
+}
+
+/* ── Skill group (category) ──────────────────────── */
+
+.skill-group {
+    margin-bottom: 0.5rem;
     border: 1px solid var(--color-border);
     border-radius: var(--radius);
-    padding: 0.85rem 1rem;
-    margin: 0;
     background: var(--color-surface-0);
-    transition: border-color var(--transition), box-shadow var(--transition), transform var(--transition);
+    overflow: hidden;
 }
 
-.skill-card:hover {
-    border-color: var(--color-border-hover);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-    transform: translateY(-1px);
-}
-
-.skill-header {
+.skill-group-header {
     display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 0.75rem;
+    align-items: center;
+    width: 100%;
+    padding: 0.55rem 0.85rem;
+    background: var(--color-surface-1);
+    border: none;
+    border-bottom: 1px solid var(--color-border);
+    cursor: pointer;
+    color: inherit;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    text-align: left;
+    margin: 0;
+    transition: background var(--transition);
+    line-height: 1.4;
 }
 
-.skill-header strong {
-    font-size: 0.875rem;
+.skill-group-header:hover {
+    background: var(--color-surface-2);
+}
+
+.skill-group-name {
+    flex: 1;
+}
+
+.skill-group-count {
+    font-size: 0.65rem;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    background: rgba(255, 255, 255, 0.05);
+    padding: 0.1rem 0.45rem;
+    border-radius: 3px;
+    margin-right: 0.5rem;
+}
+
+.skill-group-chevron {
+    display: inline-block;
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid var(--color-text-muted);
+    transition: transform var(--transition);
+}
+
+.skill-group.collapsed .skill-group-chevron {
+    transform: rotate(-90deg);
+}
+
+.skill-group.collapsed .skill-group-body {
+    display: none;
+}
+
+.skill-group.collapsed .skill-group-header {
+    border-bottom-color: transparent;
+}
+
+/* ── Skill row ───────────────────────────────────── */
+
+.skill-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.85rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    transition: background var(--transition), opacity var(--transition);
+}
+
+.skill-row:last-child,
+.skill-row:last-of-type {
+    border-bottom: none;
+}
+
+.skill-row:hover {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.skill-row--off {
+    opacity: 0.45;
+}
+
+.skill-row--off:hover {
+    opacity: 0.7;
+}
+
+.skill-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    overflow: hidden;
+}
+
+.skill-name {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
     font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .skill-desc {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
     font-size: 0.75rem;
-    line-height: 1.4;
-    margin-top: 0.35rem;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    opacity: 1;
 }
+
+.skill-gear {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    margin: 0;
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: all var(--transition);
+    line-height: 1;
+}
+
+.skill-gear:hover {
+    color: var(--color-primary);
+    border-color: var(--color-border);
+    background: var(--color-surface-1);
+}
+
+/* ── Skill toggle (large, satisfying) ────────────── */
+
+.skill-toggle {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    cursor: pointer;
+    margin: 0;
+    padding: 0;
+}
+
+.skill-toggle input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+}
+
+.skill-toggle-track {
+    position: relative;
+    width: 36px;
+    height: 20px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    transition: background var(--transition), box-shadow var(--transition);
+    cursor: pointer;
+}
+
+.skill-toggle-knob {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 14px;
+    height: 14px;
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 50%;
+    transition: transform var(--transition), background var(--transition);
+}
+
+.skill-toggle input:checked + .skill-toggle-track {
+    background: var(--color-primary);
+    box-shadow: 0 0 6px var(--color-primary-glow);
+}
+
+.skill-toggle input:checked + .skill-toggle-track .skill-toggle-knob {
+    transform: translateX(16px);
+    background: #fff;
+}
+
+.skill-toggle input:disabled + .skill-toggle-track {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+/* ── Skill settings drawer ───────────────────────── */
 
 .skill-settings {
-    margin-top: 0.5rem;
-    border-top: 1px solid var(--color-border);
-    padding-top: 0.5rem;
+    display: none;
+    background: var(--color-surface-1);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
 
-.skill-settings summary {
+.skill-settings[open] {
+    display: block;
+    animation: slideUp 0.15s ease;
+}
+
+.skill-settings-inner {
+    padding: 0.5rem 0.85rem 0.65rem 3.5rem;
+}
+
+.skill-settings-inner label {
+    font-size: 0.75rem;
     font-family: var(--font-mono);
-    font-size: 0.7rem;
-    cursor: pointer;
-    opacity: 0.55;
-    letter-spacing: 0.02em;
-    text-transform: uppercase;
-    transition: opacity var(--transition);
+    margin-bottom: 0.15rem;
 }
 
-.skill-settings summary:hover {
-    opacity: 0.85;
-}
-
-.skill-settings-body {
-    padding: 0.5rem 0;
-    animation: slideUp 0.2s ease;
-}
-
-.skill-settings-body label {
-    font-size: 0.8125rem;
-}
-
-.skill-settings-body input {
-    font-size: 0.8125rem;
+.skill-settings-inner input {
+    font-size: 0.8rem;
+    margin-bottom: 0.35rem;
 }
 
 /* ── Toggle switch ────────────────────────────────── */

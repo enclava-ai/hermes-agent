@@ -28,7 +28,7 @@ def _render_skills(request, flash=None):
 
     # Deferred import to avoid tool registry chain (Pitfall 4)
     from tools.skills_tool import _find_all_skills
-    all_skills = _find_all_skills(skip_disabled=False)
+    all_skills = _find_all_skills(skip_disabled=True)
 
     # Group by category and mark enabled/disabled
     categories = {}
