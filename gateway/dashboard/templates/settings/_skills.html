@@ -22,7 +22,7 @@
     <div class="skill-header">
       <div>
         <strong>{{ skill.name }}</strong>
-        {% if skill.description %}<br><small>{{ skill.description }}</small>{% endif %}
+        {% if skill.description %}<small class="skill-desc">{{ skill.description }}</small>{% endif %}
       </div>
       <label class="toggle-switch">
         <input type="checkbox"

@@ -503,7 +503,7 @@ nav ul li a[role="button"]:hover {
 .skill-card {
     border: 1px solid var(--color-border);
     border-radius: var(--radius);
-    padding: 0.65rem 0.85rem;
+    padding: 0.85rem 1rem;
     margin: 0;
     background: var(--color-surface-0);
     transition: border-color var(--transition), box-shadow var(--transition), transform var(--transition);
@@ -518,7 +518,7 @@ nav ul li a[role="button"]:hover {
 .skill-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     gap: 0.75rem;
 }
 
@@ -527,9 +527,14 @@ nav ul li a[role="button"]:hover {
     font-weight: 600;
 }
 
-.skill-header small {
+.skill-desc {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
     font-size: 0.75rem;
     line-height: 1.4;
+    margin-top: 0.35rem;
 }
 
 .skill-settings {
@@ -570,9 +575,10 @@ nav ul li a[role="button"]:hover {
 .toggle-switch {
     position: relative;
     display: inline-block;
-    width: 38px;
-    height: 22px;
+    width: 48px;
+    height: 28px;
     flex-shrink: 0;
+    margin-top: 2px;
 }
 
 .toggle-switch input {
@@ -587,16 +593,16 @@ nav ul li a[role="button"]:hover {
     top: 0; left: 0; right: 0; bottom: 0;
     background-color: rgba(255, 255, 255, 0.1);
     transition: background-color var(--transition), box-shadow var(--transition);
-    border-radius: 22px;
+    border-radius: 28px;
 }
 
 .toggle-slider:before {
     position: absolute;
     content: "";
-    height: 16px;
-    width: 16px;
-    left: 3px;
-    bottom: 3px;
+    height: 20px;
+    width: 20px;
+    left: 4px;
+    bottom: 4px;
     background-color: rgba(255, 255, 255, 0.65);
     transition: transform var(--transition), background-color var(--transition);
     border-radius: 50%;
@@ -608,7 +614,7 @@ nav ul li a[role="button"]:hover {
 }
 
 .toggle-switch input:checked + .toggle-slider:before {
-    transform: translateX(16px);
+    transform: translateX(20px);
     background-color: #fff;
 }
 
