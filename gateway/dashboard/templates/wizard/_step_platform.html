@@ -53,8 +53,11 @@
           hx-select-oob="#wizard-step-bar">
     Back
   </button>
-  <form style="margin:0" hx-post="/dashboard/wizard/step/2" hx-target="#wizard-step-content" hx-swap="innerHTML"
-        hx-select="#wizard-step-content" hx-select-oob="#wizard-step-bar">
-    <button type="submit">Next: Summary</button>
-  </form>
+  <button hx-post="/dashboard/wizard/step/2"
+          hx-target="#wizard-step-content"
+          hx-swap="innerHTML"
+          hx-select="#wizard-step-content"
+          hx-select-oob="#wizard-step-bar">
+    Next: Summary
+  </button>
 </div>
