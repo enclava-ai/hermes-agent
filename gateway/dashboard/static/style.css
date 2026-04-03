@@ -224,19 +224,27 @@ nav:first-child ul:last-child {
     gap: 0.5rem;
 }
 
-nav:first-child button,
-nav:first-child a[role="button"] {
+nav ul li button,
+nav ul li a[role="button"] {
+    --pico-font-size: 0.7rem;
+    --pico-form-element-spacing-vertical: 0.35rem;
+    --pico-form-element-spacing-horizontal: 0.75rem;
+    --pico-nav-link-spacing-vertical: 0.35rem;
+    --pico-nav-link-spacing-horizontal: 0.75rem;
     font-family: var(--font-mono);
-    font-size: 0.7rem;
-    padding: 0.3rem 0.65rem;
+    font-size: 0.7rem !important;
+    padding: 0.35rem 0.75rem;
     letter-spacing: 0.03em;
     text-transform: uppercase;
     transition: all var(--transition);
     border-radius: var(--radius);
+    line-height: 1.4;
+    height: auto;
+    margin: 0;
 }
 
-nav:first-child button:hover,
-nav:first-child a[role="button"]:hover {
+nav ul li button:hover,
+nav ul li a[role="button"]:hover {
     transform: translateY(-1px);
 }
 
@@ -816,9 +824,9 @@ form button[type="submit"] {
     h2 { font-size: 1.25rem; }
     h3 { font-size: 1rem; }
 
-    nav:first-child button,
-    nav:first-child a[role="button"] {
-        font-size: 0.65rem;
+    nav ul li button,
+    nav ul li a[role="button"] {
+        font-size: 0.65rem !important;
         padding: 0.25rem 0.5rem;
     }
 }
