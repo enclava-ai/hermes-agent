@@ -315,7 +315,11 @@ class DockerEnvironment(BaseEnvironment):
         # Mount credential files (OAuth tokens, etc.) declared by skills.
         # Read-only so the container can authenticate but not modify host creds.
         try:
-            from tools.credential_files import get_credential_file_mounts, get_skills_directory_mount
+            from tools.credential_files import (
+                get_credential_file_mounts,
+                get_skills_directory_mount,
+                get_cache_directory_mounts,
+            )
 
             for mount_entry in get_credential_file_mounts():
                 volume_args.extend([
@@ -328,10 +332,9 @@ class DockerEnvironment(BaseEnvironment):
                     mount_entry["container_path"],
                 )
 
-            # Mount the skills directory so skill scripts/templates are
-            # available inside the container at the same relative path.
-            skills_mount = get_skills_directory_mount()
-            if skills_mount:
+            # Mount skill directories (local + external) so skill
+            # scripts/templates are available inside the container.
+            for skills_mount in get_skills_directory_mount():
                 volume_args.extend([
                     "-v",
                     f"{skills_mount['host_path']}:{skills_mount['container_path']}:ro",
@@ -340,6 +343,21 @@ class DockerEnvironment(BaseEnvironment):
                     "Docker: mounting skills dir %s -> %s",
                     skills_mount["host_path"],
                     skills_mount["container_path"],
+                )
+
+            # Mount host-side cache directories (documents, images, audio,
+            # screenshots) so the agent can access uploaded files and other
+            # cached media from inside the container.  Read-only — the
+            # container reads these but the host gateway manages writes.
+            for cache_mount in get_cache_directory_mounts():
+                volume_args.extend([
+                    "-v",
+                    f"{cache_mount['host_path']}:{cache_mount['container_path']}:ro",
+                ])
+                logger.info(
+                    "Docker: mounting cache dir %s -> %s",
+                    cache_mount["host_path"],
+                    cache_mount["container_path"],
                 )
         except Exception as e:
             logger.debug("Docker: could not load credential file mounts: %s", e)

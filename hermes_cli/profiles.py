@@ -51,6 +51,14 @@ _CLONE_CONFIG_FILES = [
     "SOUL.md",
 ]
 
+# Subdirectory files copied during --clone (path relative to profile root).
+# Memory files are part of the agent's curated identity — just as important
+# as SOUL.md for continuity when cloning a profile.
+_CLONE_SUBDIR_FILES = [
+    "memories/MEMORY.md",
+    "memories/USER.md",
+]
+
 # Runtime files stripped after --clone-all (shouldn't carry over)
 _CLONE_ALL_STRIP = [
     "gateway.pid",
@@ -74,6 +82,8 @@ _DEFAULT_EXPORT_EXCLUDE_ROOT = frozenset({
     "hermes_state.db",
     "response_store.db", "response_store.db-shm", "response_store.db-wal",
     "gateway.pid", "gateway_state.json", "processes.json",
+    "auth.json",            # API keys, OAuth tokens, credential pools
+    ".env",                 # API keys (dotenv)
     "auth.lock", "active_profile", ".update_check",
     "errors.log",
     ".hermes_history",
@@ -426,6 +436,14 @@ def create_profile(
                 if src.exists():
                     shutil.copy2(src, profile_dir / filename)
 
+            # Clone memory and other subdirectory files
+            for relpath in _CLONE_SUBDIR_FILES:
+                src = source_dir / relpath
+                if src.exists():
+                    dst = profile_dir / relpath
+                    dst.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(src, dst)
+
     return profile_dir
 
 
@@ -765,8 +783,17 @@ def export_profile(name: str, output_path: str) -> Path:
             result = shutil.make_archive(base, "gztar", tmpdir, "default")
             return Path(result)
 
-    result = shutil.make_archive(base, "gztar", str(profile_dir.parent), name)
-    return Path(result)
+    # Named profiles — stage a filtered copy to exclude credentials
+    with tempfile.TemporaryDirectory() as tmpdir:
+        staged = Path(tmpdir) / name
+        _CREDENTIAL_FILES = {"auth.json", ".env"}
+        shutil.copytree(
+            profile_dir,
+            staged,
+            ignore=lambda d, contents: _CREDENTIAL_FILES & set(contents),
+        )
+        result = shutil.make_archive(base, "gztar", tmpdir, name)
+        return Path(result)
 
 
 def _normalize_profile_archive_parts(member_name: str) -> List[str]:
