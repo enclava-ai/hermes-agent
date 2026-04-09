@@ -128,7 +128,11 @@ class TestAuthenticatedAccess:
         async with TestClient(TestServer(app)) as cli:
             token = make_session_token(fernet)
             cli.session.cookie_jar.update_cookies({SESSION_COOKIE: token})
-            resp = await cli.get("/", allow_redirects=False)
+            # Mock load_config so the index view sees a configured model
+            # and doesn't redirect to the first-run wizard.
+            fake_config = {"model": {"provider": "openrouter", "default": "test-model"}}
+            with patch("hermes_cli.config.load_config", return_value=fake_config):
+                resp = await cli.get("/", allow_redirects=False)
             assert resp.status == 200
 
     @pytest.mark.asyncio

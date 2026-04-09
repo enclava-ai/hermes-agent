@@ -10,9 +10,10 @@ def _make_mock_tinfoil_client(models=None, completion_text="hello"):
     """Build a mock TinfoilAI client that returns plausible responses."""
     client = MagicMock()
 
-    # models.list()
+    # models.list() — TinfoilAI wraps an inner OpenAI client as .client,
+    # and list_models() accesses client.client.models.list().
     model_objs = [SimpleNamespace(id=m) for m in (models or ["llama3-3-70b"])]
-    client.models.list.return_value = SimpleNamespace(data=model_objs)
+    client.client.models.list.return_value = SimpleNamespace(data=model_objs)
 
     # chat.completions.create() non-streaming
     choice = SimpleNamespace(

@@ -166,6 +166,8 @@ def _resolve_runtime_from_pool_entry(
         api_mode = "chat_completions"
     elif provider == "copilot":
         api_mode = _copilot_runtime_api_mode(model_cfg, getattr(entry, "runtime_api_key", ""))
+    elif provider == "tinfoil":
+        api_mode = "tinfoil"
     else:
         configured_provider = str(model_cfg.get("provider") or "").strip().lower()
         # Honour model.base_url from config.yaml when the configured provider
@@ -559,6 +561,8 @@ def _resolve_explicit_runtime(
         api_mode = "chat_completions"
         if provider == "copilot":
             api_mode = _copilot_runtime_api_mode(model_cfg, api_key)
+        elif provider == "tinfoil":
+            api_mode = "tinfoil"
         else:
             configured_mode = _parse_api_mode(model_cfg.get("api_mode"))
             if configured_mode:
@@ -753,24 +757,6 @@ def resolve_runtime_provider(
             "requested_provider": requested_provider,
         }
 
-    # Tinfoil (Confidential AI — enclave-verified inference)
-    if provider == "tinfoil":
-        creds = resolve_api_key_provider_credentials("tinfoil")
-        api_key = creds.get("api_key", "")
-        if not api_key:
-            raise AuthError(
-                "No Tinfoil credentials found. Set TINFOIL_API_KEY in your environment. "
-                "Get an API key at https://tinfoil.sh"
-            )
-        return {
-            "provider": "tinfoil",
-            "api_mode": "tinfoil",
-            "api_key": api_key,
-            "base_url": creds.get("base_url", "https://inference.tinfoil.sh/v1"),
-            "source": creds.get("source", "env"),
-            "requested_provider": requested_provider,
-        }
-
     # API-key providers (z.ai/GLM, Kimi, MiniMax, MiniMax-CN)
     pconfig = PROVIDER_REGISTRY.get(provider)
     if pconfig and pconfig.auth_type == "api_key":
@@ -787,6 +773,8 @@ def resolve_runtime_provider(
         api_mode = "chat_completions"
         if provider == "copilot":
             api_mode = _copilot_runtime_api_mode(model_cfg, creds.get("api_key", ""))
+        elif provider == "tinfoil":
+            api_mode = "tinfoil"
         else:
             configured_provider = str(model_cfg.get("provider") or "").strip().lower()
             # Only honor persisted api_mode when it belongs to the same provider family.
@@ -803,11 +791,17 @@ def resolve_runtime_provider(
         # Strip trailing /v1 for OpenCode Anthropic models (see comment above).
         if api_mode == "anthropic_messages" and provider in ("opencode-zen", "opencode-go"):
             base_url = re.sub(r"/v1/?$", "", base_url)
+        api_key = creds.get("api_key", "")
+        if provider == "tinfoil" and not api_key:
+            raise AuthError(
+                "No Tinfoil credentials found. Set TINFOIL_API_KEY in your environment. "
+                "Get an API key at https://tinfoil.sh"
+            )
         return {
             "provider": provider,
             "api_mode": api_mode,
             "base_url": base_url,
-            "api_key": creds.get("api_key", ""),
+            "api_key": api_key,
             "source": creds.get("source", "env"),
             "requested_provider": requested_provider,
         }
