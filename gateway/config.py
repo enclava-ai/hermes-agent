@@ -63,6 +63,8 @@ class Platform(Enum):
     WEBHOOK = "webhook"
     FEISHU = "feishu"
     WECOM = "wecom"
+    BLUEBUBBLES = "bluebubbles"
+    SIMPLEX = "simplex"
 
 
 @dataclass
@@ -286,6 +288,12 @@ class GatewayConfig:
                 connected.append(platform)
             # WeCom uses extra dict for bot credentials
             elif platform == Platform.WECOM and config.extra.get("bot_id"):
+                connected.append(platform)
+            # BlueBubbles uses extra dict for local server config
+            elif platform == Platform.BLUEBUBBLES and config.extra.get("server_url") and config.extra.get("password"):
+                connected.append(platform)
+            # SimpleX uses extra dict for config (ws_url)
+            elif platform == Platform.SIMPLEX and config.extra.get("ws_url"):
                 connected.append(platform)
         return connected
     
@@ -947,6 +955,48 @@ def _apply_env_overrides(config: GatewayConfig) -> None:
                 chat_id=wecom_home,
                 name=os.getenv("WECOM_HOME_CHANNEL_NAME", "Home"),
             )
+
+    # BlueBubbles (iMessage)
+    bluebubbles_server_url = os.getenv("BLUEBUBBLES_SERVER_URL")
+    bluebubbles_password = os.getenv("BLUEBUBBLES_PASSWORD")
+    if bluebubbles_server_url and bluebubbles_password:
+        if Platform.BLUEBUBBLES not in config.platforms:
+            config.platforms[Platform.BLUEBUBBLES] = PlatformConfig()
+        config.platforms[Platform.BLUEBUBBLES].enabled = True
+        config.platforms[Platform.BLUEBUBBLES].extra.update({
+            "server_url": bluebubbles_server_url.rstrip("/"),
+            "password": bluebubbles_password,
+            "webhook_host": os.getenv("BLUEBUBBLES_WEBHOOK_HOST", "127.0.0.1"),
+            "webhook_port": int(os.getenv("BLUEBUBBLES_WEBHOOK_PORT", "8645")),
+            "webhook_path": os.getenv("BLUEBUBBLES_WEBHOOK_PATH", "/bluebubbles-webhook"),
+            "send_read_receipts": os.getenv("BLUEBUBBLES_SEND_READ_RECEIPTS", "true").lower() in ("true", "1", "yes"),
+        })
+    bluebubbles_home = os.getenv("BLUEBUBBLES_HOME_CHANNEL")
+    if bluebubbles_home and Platform.BLUEBUBBLES in config.platforms:
+        config.platforms[Platform.BLUEBUBBLES].home_channel = HomeChannel(
+            platform=Platform.BLUEBUBBLES,
+            chat_id=bluebubbles_home,
+            name=os.getenv("BLUEBUBBLES_HOME_CHANNEL_NAME", "Home"),
+        )
+
+    # SimpleX Chat
+    simplex_ws_url = os.getenv("SIMPLEX_WS_URL")
+    if simplex_ws_url:
+        if Platform.SIMPLEX not in config.platforms:
+            config.platforms[Platform.SIMPLEX] = PlatformConfig()
+        config.platforms[Platform.SIMPLEX].enabled = True
+        config.platforms[Platform.SIMPLEX].extra.update({
+            "ws_url": simplex_ws_url,
+            "auto_accept": os.getenv("SIMPLEX_AUTO_ACCEPT", "true").lower() in ("true", "1", "yes"),
+        })
+    simplex_home = os.getenv("SIMPLEX_HOME_CHANNEL")
+    if simplex_home and Platform.SIMPLEX in config.platforms:
+        config.platforms[Platform.SIMPLEX].home_channel = HomeChannel(
+            platform=Platform.SIMPLEX,
+            chat_id=simplex_home,
+            name=os.getenv("SIMPLEX_HOME_CHANNEL_NAME", "Home"),
+        )
+
 
     # Session settings
     idle_minutes = os.getenv("SESSION_IDLE_MINUTES")

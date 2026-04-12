@@ -1075,6 +1075,8 @@ class GatewayRunner:
                        "MATRIX_ALLOWED_USERS", "DINGTALK_ALLOWED_USERS",
                        "FEISHU_ALLOWED_USERS",
                        "WECOM_ALLOWED_USERS",
+                       "BLUEBUBBLES_ALLOWED_USERS",
+                       "SIMPLEX_ALLOWED_USERS",
                        "GATEWAY_ALLOWED_USERS")
         )
         _allow_all = os.getenv("GATEWAY_ALLOW_ALL_USERS", "").lower() in ("true", "1", "yes") or any(
@@ -1085,7 +1087,9 @@ class GatewayRunner:
                        "SMS_ALLOW_ALL_USERS", "MATTERMOST_ALLOW_ALL_USERS",
                        "MATRIX_ALLOW_ALL_USERS", "DINGTALK_ALLOW_ALL_USERS",
                        "FEISHU_ALLOW_ALL_USERS",
-                       "WECOM_ALLOW_ALL_USERS")
+                       "WECOM_ALLOW_ALL_USERS",
+                       "BLUEBUBBLES_ALLOW_ALL_USERS",
+                       "SIMPLEX_ALLOW_ALL_USERS")
         )
         if not _any_allowlist and not _allow_all:
             logger.warning(
@@ -1656,6 +1660,21 @@ class GatewayRunner:
             adapter.gateway_runner = self  # For cross-platform delivery
             return adapter
 
+        elif platform == Platform.BLUEBUBBLES:
+            from gateway.platforms.bluebubbles import BlueBubblesAdapter, check_bluebubbles_requirements
+            if not check_bluebubbles_requirements():
+                logger.warning("BlueBubbles: aiohttp/httpx missing or BLUEBUBBLES_SERVER_URL/BLUEBUBBLES_PASSWORD not configured")
+                return None
+            return BlueBubblesAdapter(config)
+
+        elif platform == Platform.SIMPLEX:
+            from gateway.platforms.simplex import SimplexAdapter, check_simplex_requirements
+            if not check_simplex_requirements():
+                logger.warning("SimpleX: SIMPLEX_WS_URL not configured")
+                return None
+            return SimplexAdapter(config)
+
+
         return None
     
     def _is_user_authorized(self, source: SessionSource) -> bool:
@@ -1694,6 +1713,8 @@ class GatewayRunner:
             Platform.DINGTALK: "DINGTALK_ALLOWED_USERS",
             Platform.FEISHU: "FEISHU_ALLOWED_USERS",
             Platform.WECOM: "WECOM_ALLOWED_USERS",
+            Platform.BLUEBUBBLES: "BLUEBUBBLES_ALLOWED_USERS",
+            Platform.SIMPLEX: "SIMPLEX_ALLOWED_USERS",
         }
         platform_allow_all_map = {
             Platform.TELEGRAM: "TELEGRAM_ALLOW_ALL_USERS",
@@ -1708,6 +1729,8 @@ class GatewayRunner:
             Platform.DINGTALK: "DINGTALK_ALLOW_ALL_USERS",
             Platform.FEISHU: "FEISHU_ALLOW_ALL_USERS",
             Platform.WECOM: "WECOM_ALLOW_ALL_USERS",
+            Platform.BLUEBUBBLES: "BLUEBUBBLES_ALLOW_ALL_USERS",
+            Platform.SIMPLEX: "SIMPLEX_ALLOW_ALL_USERS",
         }
 
         # Per-platform allow-all flag (e.g., DISCORD_ALLOW_ALL_USERS=true)
@@ -5520,7 +5543,7 @@ class GatewayRunner:
         Platform.TELEGRAM, Platform.DISCORD, Platform.SLACK, Platform.WHATSAPP,
         Platform.SIGNAL, Platform.MATTERMOST, Platform.MATRIX,
         Platform.HOMEASSISTANT, Platform.EMAIL, Platform.SMS, Platform.DINGTALK,
-        Platform.FEISHU, Platform.WECOM, Platform.LOCAL,
+        Platform.FEISHU, Platform.WECOM, Platform.BLUEBUBBLES, Platform.SIMPLEX, Platform.LOCAL,
     })
 
     async def _handle_update_command(self, event: MessageEvent) -> str:
