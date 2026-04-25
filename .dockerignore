@@ -17,3 +17,6 @@ node_modules
 !docker/SOUL.md
 !skills/**/SKILL.md
 !cli-config.yaml.example
+
+# Runtime data (bind-mounted at /opt/data; must not leak into build context)
+data/
