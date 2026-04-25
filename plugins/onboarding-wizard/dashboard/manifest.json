@@ -1,0 +1,13 @@
+{
+  "name": "onboarding-wizard",
+  "label": "Setup",
+  "description": "Guided onboarding wizard for first-run configuration of LLM provider and messaging platforms.",
+  "icon": "Wand2",
+  "version": "1.0.0",
+  "tab": {
+    "path": "/setup",
+    "position": "after:config"
+  },
+  "entry": "dist/index.js",
+  "api": "plugin_api.py"
+}
