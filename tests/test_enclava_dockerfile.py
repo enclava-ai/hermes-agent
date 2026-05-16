@@ -125,7 +125,8 @@ def test_enclava_entrypoint_supervises_gateway_restart_without_exiting_container
 
     assert "GATEWAY_SERVICE_RESTART_EXIT_CODE" in (ROOT / "gateway/restart.py").read_text()
     assert "HERMES_GATEWAY_RESTART_EXIT_CODES" in entrypoint
-    assert 'HERMES_GATEWAY_RESTART_EXIT_CODES="${HERMES_GATEWAY_RESTART_EXIT_CODES:-0 75}"' in entrypoint
+    assert 'HERMES_GATEWAY_RESTART_EXIT_CODES="${HERMES_GATEWAY_RESTART_EXIT_CODES:-all}"' in entrypoint
+    assert 'if [ "$HERMES_GATEWAY_RESTART_EXIT_CODES" = "all" ]; then' in entrypoint
     assert "run_gateway_supervisor" in entrypoint
     assert "Hermes gateway requested restart" in entrypoint
     assert "wait -n" not in entrypoint
