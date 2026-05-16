@@ -51,7 +51,7 @@ Hermes must run with:
 - `API_SERVER_HOST=0.0.0.0`
 - `API_SERVER_PORT=8000`
 - `API_SERVER_KEY=<required>`
-- `HERMES_HOME=/opt/data`
+- `HERMES_HOME=/state/data`
 
 `HERMES_HOME` is respected by both the Enclava wrapper entrypoint and the inner Docker entrypoint; it is no longer only a documentation-level contract.
 
@@ -72,7 +72,7 @@ The repo now includes a platform-specific wrapper:
 - `deploy/enclava/startup.sh`
 - `/usr/local/bin/enclava-wait-exec`
 
-It does three things:
+It does four things:
 
 1. waits for `/run/enclava/init-ready` through `enclava-wait-exec` when CAP sets `ENCLAVA_CONTAINER_NAME`
 2. enables the API server
@@ -130,7 +130,11 @@ Inside the confidential platform, the Hermes app container should look like this
 - health path:
   - `/health`
 - persistent mount for Hermes home:
-  - `/opt/data`
+  - `/state/data`
+
+Set `[storage].paths = []` in `enclava.toml`. CAP exposes decrypted state at
+`/state`; declaring app-specific storage paths makes CAP render per-app bind
+mounts, which are not supported by the current Kata runtime path.
 
 The public hostname should be exposed by the platform sidecar on:
 
@@ -139,7 +143,7 @@ The public hostname should be exposed by the platform sidecar on:
 ## Minimal Environment Example
 
 ```env
-HERMES_HOME=/opt/data
+HERMES_HOME=/state/data
 API_SERVER_ENABLED=true
 API_SERVER_HOST=0.0.0.0
 API_SERVER_PORT=8000

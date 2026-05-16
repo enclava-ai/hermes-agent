@@ -10,7 +10,7 @@ export API_SERVER_ENABLED="${API_SERVER_ENABLED:-true}"
 export API_SERVER_HOST="${API_SERVER_HOST:-0.0.0.0}"
 export API_SERVER_PORT="${API_SERVER_PORT:-${PORT:-8000}}"
 
-HERMES_HOME="${HERMES_HOME:-/opt/data}"
+HERMES_HOME="${HERMES_HOME:-/state/data}"
 export HERMES_HOME
 
 if [ "$$" = "1" ] && [ -z "${HERMES_ENCLAVA_TINI_WRAPPED:-}" ] && command -v tini >/dev/null 2>&1; then

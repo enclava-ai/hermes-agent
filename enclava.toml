@@ -4,7 +4,7 @@ port = 8000
 command = ["/usr/bin/tini", "-g", "--", "/opt/hermes/docker/entrypoint-enclava-api.sh"]
 
 [storage]
-paths = ["/opt/data"]
+paths = []
 size = "10Gi"
 tls_size = "2Gi"
 

@@ -45,6 +45,20 @@ def test_enclava_descriptor_uses_pid1_init_command():
     ]
 
 
+def test_enclava_package_uses_state_directly_without_app_bind_mounts():
+    descriptor = tomllib.loads((ROOT / "enclava.toml").read_text())
+    dockerfile = (ROOT / "Dockerfile.enclava").read_text()
+    entrypoint = (ROOT / "docker/entrypoint-enclava-api.sh").read_text()
+    docs = (ROOT / "docs/ENCLAVA_PLATFORM.md").read_text()
+
+    assert descriptor["storage"]["paths"] == []
+    assert "HERMES_HOME=/state/data" in dockerfile
+    assert "HERMES_HOME=\"${HERMES_HOME:-/state/data}\"" in entrypoint
+    assert "/opt/data" not in dockerfile
+    assert "/opt/data" not in entrypoint
+    assert "/opt/data" not in docs
+
+
 def test_enclava_entrypoint_waits_under_cap_only_once():
     entrypoint = (ROOT / "docker/entrypoint-enclava-api.sh").read_text()
 
