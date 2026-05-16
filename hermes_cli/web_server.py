@@ -85,6 +85,13 @@ app = FastAPI(title="Hermes Agent", version=__version__)
 # ---------------------------------------------------------------------------
 _SESSION_TOKEN = secrets.token_urlsafe(32)
 _SESSION_HEADER_NAME = "X-Hermes-Session-Token"
+_DASHBOARD_ACCESS_TOKEN = os.environ.get("HERMES_DASHBOARD_AUTH_TOKEN") or os.environ.get(
+    "HERMES_DASHBOARD_ACCESS_TOKEN",
+    "",
+)
+_DASHBOARD_ACCESS_COOKIE = "hermes_dashboard_access"
+_DASHBOARD_ACCESS_HEADER = "X-Hermes-Dashboard-Token"
+_DASHBOARD_ACCESS_QUERY = "dashboard_token"
 
 # In-browser Chat tab (/chat, /api/pty, …).  Off unless ``hermes dashboard --tui``
 # or HERMES_DASHBOARD_TUI=1.  Set from :func:`start_server`.
@@ -140,6 +147,44 @@ def _has_valid_session_token(request: Request) -> bool:
     auth = request.headers.get("authorization", "")
     expected = f"Bearer {_SESSION_TOKEN}"
     return hmac.compare_digest(auth.encode(), expected.encode())
+
+
+def _matches_dashboard_access_token(value: str | None) -> bool:
+    if not value or not _DASHBOARD_ACCESS_TOKEN:
+        return False
+    return hmac.compare_digest(value.encode(), _DASHBOARD_ACCESS_TOKEN.encode())
+
+
+def _has_valid_dashboard_access_token(request: Request) -> bool:
+    if not _DASHBOARD_ACCESS_TOKEN:
+        return True
+
+    if _matches_dashboard_access_token(request.query_params.get(_DASHBOARD_ACCESS_QUERY)):
+        return True
+    if _matches_dashboard_access_token(request.cookies.get(_DASHBOARD_ACCESS_COOKIE)):
+        return True
+    if _matches_dashboard_access_token(request.headers.get(_DASHBOARD_ACCESS_HEADER)):
+        return True
+
+    auth = request.headers.get("authorization", "")
+    if auth.lower().startswith("bearer "):
+        return _matches_dashboard_access_token(auth[7:].strip())
+    return False
+
+
+def _dashboard_access_response(request: Request, response: Response) -> Response:
+    if _DASHBOARD_ACCESS_TOKEN and _matches_dashboard_access_token(
+        request.query_params.get(_DASHBOARD_ACCESS_QUERY)
+    ):
+        response.set_cookie(
+            _DASHBOARD_ACCESS_COOKIE,
+            _DASHBOARD_ACCESS_TOKEN,
+            httponly=True,
+            secure=True,
+            samesite="lax",
+            max_age=3600,
+        )
+    return response
 
 
 def _require_token(request: Request) -> None:
@@ -234,6 +279,23 @@ async def host_header_middleware(request: Request, call_next):
 
 
 @app.middleware("http")
+async def dashboard_access_middleware(request: Request, call_next):
+    """Optionally protect the whole dashboard with an external handoff token."""
+    path = request.url.path
+    if (
+        path == "/health"
+        or path.startswith("/.well-known/")
+        or path == "/v1"
+        or path.startswith("/v1/")
+    ):
+        return await call_next(request)
+    if not _has_valid_dashboard_access_token(request):
+        return JSONResponse(status_code=401, content={"detail": "Unauthorized"})
+    response = await call_next(request)
+    return _dashboard_access_response(request, response)
+
+
+@app.middleware("http")
 async def auth_middleware(request: Request, call_next):
     """Require the session token on all /api/ routes except the public list."""
     path = request.url.path
@@ -244,6 +306,19 @@ async def auth_middleware(request: Request, call_next):
                 content={"detail": "Unauthorized"},
             )
     return await call_next(request)
+
+
+@app.get("/health")
+def dashboard_health():
+    return {"status": "ok", "service": "hermes-dashboard"}
+
+
+@app.api_route(
+    "/v1/{full_path:path}",
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+)
+def reject_public_openai_api(full_path: str):
+    return JSONResponse(status_code=404, content={"detail": "Not found"})
 
 
 # ---------------------------------------------------------------------------

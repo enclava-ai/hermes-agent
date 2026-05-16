@@ -328,6 +328,54 @@ class TestWebServerEndpoints:
         resp = unauth_client.get("/api/status")
         assert resp.status_code == 200
 
+    def test_dashboard_external_auth_blocks_spa_when_configured(self, monkeypatch):
+        """Public dashboard deployments can require an external SSO token."""
+        from starlette.testclient import TestClient
+        import hermes_cli.web_server as ws
+
+        monkeypatch.setattr(ws, "_DASHBOARD_ACCESS_TOKEN", "secret-dashboard-token")
+        unauth_client = TestClient(ws.app)
+
+        resp = unauth_client.get("/")
+
+        assert resp.status_code == 401
+
+    def test_dashboard_external_auth_query_token_sets_cookie(self, monkeypatch):
+        """Secret Agent can hand off by redirecting once with a short-lived token."""
+        from starlette.testclient import TestClient
+        import hermes_cli.web_server as ws
+
+        monkeypatch.setattr(ws, "_DASHBOARD_ACCESS_TOKEN", "secret-dashboard-token")
+        client = TestClient(ws.app)
+
+        resp = client.get("/?dashboard_token=secret-dashboard-token")
+
+        # Unit tests do not require the Vite bundle to be built; in that case
+        # the SPA fallback returns the existing 404 while still proving the
+        # external-auth handoff cookie is issued.
+        assert resp.status_code in (200, 404)
+        assert "hermes_dashboard_access" in resp.headers.get("set-cookie", "")
+
+    def test_dashboard_external_auth_allows_health_for_cap(self, monkeypatch):
+        """CAP can probe dashboard health without holding a user dashboard token."""
+        from starlette.testclient import TestClient
+        import hermes_cli.web_server as ws
+
+        monkeypatch.setattr(ws, "_DASHBOARD_ACCESS_TOKEN", "secret-dashboard-token")
+        resp = TestClient(ws.app).get("/health")
+
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "ok"
+
+    def test_dashboard_rejects_public_hermes_v1_api_prefix(self):
+        """Dashboard-public deployments must not expose OpenAI-compatible API routes."""
+        from starlette.testclient import TestClient
+        import hermes_cli.web_server as ws
+
+        resp = TestClient(ws.app).get("/v1/models")
+
+        assert resp.status_code == 404
+
     def test_path_traversal_blocked(self):
         """Verify URL-encoded path traversal is blocked."""
         # %2e%2e = ..

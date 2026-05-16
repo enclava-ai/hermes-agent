@@ -88,16 +88,17 @@ jobs:
           docker run --rm -d --name hermes-enclava-smoke \
             -p 18000:8000 \
             -e HERMES_HOME=/state/data \
-            -e API_SERVER_KEY=test-secret-123456789 \
+            -e HERMES_DASHBOARD_AUTH_TOKEN=test-dashboard-secret \
             -e HERMES_INFERENCE_PROVIDER=openrouter \
             -e HERMES_INFERENCE_MODEL=openai/gpt-4o-mini \
             "$IMAGE_TAG"
           trap 'docker rm -f hermes-enclava-smoke >/dev/null 2>&1 || true' EXIT
           for _ in $(seq 1 120); do
             if curl -fsS http://127.0.0.1:18000/health >/dev/null; then
-              curl -fsS \
-                -H 'Authorization: Bearer test-secret-123456789' \
-                http://127.0.0.1:18000/v1/models >/dev/null
+              test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18000/)" = "401"
+              curl -fsS "http://127.0.0.1:18000/?dashboard_token=test-dashboard-secret" >/dev/null
+              API_PREFIX="/v1"
+              test "$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:18000${API_PREFIX}/models")" = "404"
               exit 0
             fi
             sleep 1

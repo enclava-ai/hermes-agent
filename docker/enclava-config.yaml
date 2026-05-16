@@ -1,6 +1,11 @@
 # Hermes Agent — Enclava deployment config
-# Minimal API-only config enabling the API server.
+# Dashboard-public config with the gateway API kept internal.
 
 platforms:
   api_server:
     enabled: true
+    host: 127.0.0.1
+    port: 18080
+
+dashboard:
+  gateway_health_url: http://127.0.0.1:18080
