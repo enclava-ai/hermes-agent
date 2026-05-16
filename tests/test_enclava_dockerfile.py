@@ -118,7 +118,16 @@ def test_enclava_entrypoint_does_not_delegate_to_standard_docker_entrypoint():
     assert "/opt/hermes/docker/entrypoint.sh" not in entrypoint
     assert "hermes gateway" in entrypoint
     assert "hermes dashboard" in entrypoint
-    assert "wait -n" in entrypoint
+
+
+def test_enclava_entrypoint_supervises_gateway_restart_without_exiting_container():
+    entrypoint = (ROOT / "docker/entrypoint-enclava.sh").read_text()
+
+    assert "GATEWAY_SERVICE_RESTART_EXIT_CODE" in (ROOT / "gateway/restart.py").read_text()
+    assert "HERMES_GATEWAY_RESTART_EXIT_CODES" in entrypoint
+    assert "run_gateway_supervisor" in entrypoint
+    assert "Hermes gateway requested restart" in entrypoint
+    assert "wait -n" not in entrypoint
 
 
 def test_enclava_first_boot_supports_inference_env_names():

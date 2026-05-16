@@ -12,6 +12,8 @@ export API_SERVER_PORT="${API_SERVER_PORT:-18080}"
 export HERMES_DASHBOARD_HOST="${HERMES_DASHBOARD_HOST:-0.0.0.0}"
 export HERMES_DASHBOARD_PORT="${HERMES_DASHBOARD_PORT:-${PORT:-8000}}"
 export GATEWAY_HEALTH_URL="${GATEWAY_HEALTH_URL:-http://127.0.0.1:${API_SERVER_PORT}}"
+export HERMES_GATEWAY_RESTART_EXIT_CODES="${HERMES_GATEWAY_RESTART_EXIT_CODES:-75}"
+export HERMES_GATEWAY_RESTART_DELAY_SECONDS="${HERMES_GATEWAY_RESTART_DELAY_SECONDS:-1}"
 
 HERMES_HOME="${HERMES_HOME:-/state/data}"
 export HERMES_HOME
@@ -159,22 +161,55 @@ if [ -d /opt/hermes/skills ]; then
   python3 /opt/hermes/tools/skills_sync.py
 fi
 
+is_gateway_restart_status() {
+  status="$1"
+  for restart_status in $HERMES_GATEWAY_RESTART_EXIT_CODES; do
+    if [ "$status" = "$restart_status" ]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+run_gateway_supervisor() {
+  trap 'if [ -n "${gateway_pid:-}" ] && kill -0 "$gateway_pid" >/dev/null 2>&1; then kill "$gateway_pid" >/dev/null 2>&1 || true; fi; exit 143' INT TERM
+
+  while true; do
+    hermes gateway &
+    gateway_pid="$!"
+
+    set +e
+    wait "$gateway_pid"
+    status="$?"
+    set -e
+    gateway_pid=""
+
+    if is_gateway_restart_status "$status"; then
+      echo "Hermes gateway requested restart with exit code ${status}; restarting gateway inside container"
+      sleep "$HERMES_GATEWAY_RESTART_DELAY_SECONDS"
+      continue
+    fi
+
+    return "$status"
+  done
+}
+
 shutdown() {
   status="${1:-0}"
-  if [ -n "${gateway_pid:-}" ] && kill -0 "$gateway_pid" >/dev/null 2>&1; then
-    kill "$gateway_pid" >/dev/null 2>&1 || true
+  if [ -n "${gateway_supervisor_pid:-}" ] && kill -0 "$gateway_supervisor_pid" >/dev/null 2>&1; then
+    kill "$gateway_supervisor_pid" >/dev/null 2>&1 || true
   fi
   if [ -n "${dashboard_pid:-}" ] && kill -0 "$dashboard_pid" >/dev/null 2>&1; then
     kill "$dashboard_pid" >/dev/null 2>&1 || true
   fi
-  wait "$gateway_pid" "$dashboard_pid" >/dev/null 2>&1 || true
+  wait "${gateway_supervisor_pid:-}" "${dashboard_pid:-}" >/dev/null 2>&1 || true
   exit "$status"
 }
 
 trap 'shutdown 143' INT TERM
 
-hermes gateway &
-gateway_pid="$!"
+run_gateway_supervisor &
+gateway_supervisor_pid="$!"
 
 hermes dashboard \
   --host "$HERMES_DASHBOARD_HOST" \
@@ -183,5 +218,22 @@ hermes dashboard \
   --insecure &
 dashboard_pid="$!"
 
-wait -n "$gateway_pid" "$dashboard_pid"
-shutdown "$?"
+while true; do
+  if ! kill -0 "$dashboard_pid" >/dev/null 2>&1; then
+    set +e
+    wait "$dashboard_pid"
+    status="$?"
+    set -e
+    shutdown "$status"
+  fi
+
+  if ! kill -0 "$gateway_supervisor_pid" >/dev/null 2>&1; then
+    set +e
+    wait "$gateway_supervisor_pid"
+    status="$?"
+    set -e
+    shutdown "$status"
+  fi
+
+  sleep 1
+done
