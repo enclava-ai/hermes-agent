@@ -1,6 +1,16 @@
 name: Build Enclava image
 
 on:
+  pull_request:
+    paths:
+      - 'Dockerfile.enclava'
+      - 'docker/**'
+      - 'gateway/**'
+      - 'agent/**'
+      - 'hermes_cli/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - '.github/workflows/enclava-build.yml'
   push:
     tags:
       - 'v*.*.*'
@@ -48,7 +58,6 @@ jobs:
           tags: |
             type=semver,pattern={{version}}
             type=sha,format=long,prefix=sha-
-            type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push Docker image
         id: build
@@ -57,6 +66,7 @@ jobs:
           context: .
           file: ./Dockerfile.enclava
           push: ${{ github.event_name != 'pull_request' }}
+          load: ${{ github.event_name == 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
@@ -69,6 +79,31 @@ jobs:
           echo "Image pushed successfully"
           echo "Tags: ${{ steps.meta.outputs.tags }}"
           echo "Digest: ${{ steps.build.outputs.digest }}"
+
+      - name: Smoke test PR image
+        if: github.event_name == 'pull_request'
+        run: |
+          set -euo pipefail
+          IMAGE_TAG="$(printf '%s\n' '${{ steps.meta.outputs.tags }}' | head -n1)"
+          docker run --rm -d --name hermes-enclava-smoke \
+            -p 18000:8000 \
+            -e HERMES_HOME=/opt/data \
+            -e API_SERVER_KEY=test-secret-123456789 \
+            -e HERMES_INFERENCE_PROVIDER=openrouter \
+            -e HERMES_INFERENCE_MODEL=openai/gpt-4o-mini \
+            "$IMAGE_TAG"
+          trap 'docker rm -f hermes-enclava-smoke >/dev/null 2>&1 || true' EXIT
+          for _ in $(seq 1 120); do
+            if curl -fsS http://127.0.0.1:18000/health >/dev/null; then
+              curl -fsS \
+                -H 'Authorization: Bearer test-secret-123456789' \
+                http://127.0.0.1:18000/v1/models >/dev/null
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs hermes-enclava-smoke
+          exit 1
 
       - name: Resolve policy metadata
         if: github.event_name != 'pull_request'
@@ -109,6 +144,12 @@ jobs:
       - name: Install Cosign
         if: github.event_name != 'pull_request'
         uses: sigstore/cosign-installer@v3
+
+      - name: Cosign sign image
+        if: github.event_name != 'pull_request'
+        run: |
+          set -euo pipefail
+          cosign sign --yes "${{ steps.policy_meta.outputs.image_ref }}"
 
       - name: Keyless sign attestation policy
         if: github.event_name != 'pull_request'

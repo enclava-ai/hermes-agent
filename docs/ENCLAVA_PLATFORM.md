@@ -11,6 +11,9 @@ It uses:
 
 Hermes itself serves plain HTTP inside the pod.
 
+CAP v1 for Hermes is API-only. It exposes the gateway's OpenAI-compatible API
+server and does not start the Hermes web UI.
+
 ## Generator Integration
 
 Hermes can now target the generic tenant scaffold directly.
@@ -67,12 +70,14 @@ The repo now includes a platform-specific wrapper:
 
 - `/opt/hermes/docker/entrypoint-enclava-api.sh`
 - `deploy/enclava/startup.sh`
+- `/usr/local/bin/enclava-wait-exec`
 
 It does three things:
 
-1. enables the API server
-2. binds it to `0.0.0.0`
-3. defaults the port to `${PORT:-8000}`
+1. waits for `/run/enclava/init-ready` through `enclava-wait-exec` when CAP sets `ENCLAVA_CONTAINER_NAME`
+2. enables the API server
+3. binds it to `0.0.0.0`
+4. defaults the port to `${PORT:-8000}`
 
 Then it runs:
 
@@ -89,6 +94,11 @@ At minimum, the deployment needs:
 - one LLM provider credential
   - example: `OPENROUTER_API_KEY`
 - `API_SERVER_KEY`
+
+To preseed first-boot model settings, use:
+
+- `HERMES_INFERENCE_PROVIDER`
+- `HERMES_INFERENCE_MODEL`
 
 Typical useful additions:
 
@@ -111,6 +121,9 @@ If you publish attestation policy artifacts from the Enclava GitHub workflow, pa
 Inside the confidential platform, the Hermes app container should look like this:
 
 - command:
+  - `/usr/bin/tini`
+  - `-g`
+  - `--`
   - `/opt/hermes/docker/entrypoint-enclava-api.sh`
 - app port:
   - `8000`
@@ -133,7 +146,8 @@ API_SERVER_PORT=8000
 API_SERVER_KEY=replace-me
 
 OPENROUTER_API_KEY=replace-me
-LLM_MODEL=anthropic/claude-opus-4.6
+HERMES_INFERENCE_PROVIDER=openrouter
+HERMES_INFERENCE_MODEL=anthropic/claude-opus-4.6
 
 EXA_API_KEY=
 FIRECRAWL_API_KEY=

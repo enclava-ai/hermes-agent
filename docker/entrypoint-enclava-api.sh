@@ -1,25 +1,78 @@
 #!/bin/bash
 set -euo pipefail
 
-# Enclava platform mode:
+# Enclava CAP v1 mode:
 # - persistent Hermes home on the encrypted data volume
-# - OpenAI-compatible HTTP API + dashboard exposed on plain HTTP inside the pod
+# - OpenAI-compatible HTTP API exposed on plain HTTP inside the pod
 # - public TLS terminates in the confidential tenant-ingress sidecar
-# - LLM provider configured through the dashboard by the user
 
 export API_SERVER_ENABLED="${API_SERVER_ENABLED:-true}"
 export API_SERVER_HOST="${API_SERVER_HOST:-0.0.0.0}"
 export API_SERVER_PORT="${API_SERVER_PORT:-${PORT:-8000}}"
 
 HERMES_HOME="${HERMES_HOME:-/opt/data}"
+export HERMES_HOME
+
+if [ "$$" = "1" ] && [ -z "${HERMES_ENCLAVA_TINI_WRAPPED:-}" ] && command -v tini >/dev/null 2>&1; then
+  export HERMES_ENCLAVA_TINI_WRAPPED=1
+  exec /usr/bin/tini -g -- "$0" "$@"
+fi
+
+if [ -n "${ENCLAVA_CONTAINER_NAME:-}" ] && [ -z "${HERMES_ENCLAVA_WAIT_EXEC_DONE:-}" ]; then
+  export HERMES_ENCLAVA_WAIT_EXEC_DONE=1
+  exec /usr/local/bin/enclava-wait-exec "$0" "$@"
+fi
+
+case "$API_SERVER_HOST" in
+  0.0.0.0|::)
+    if [ -z "${API_SERVER_KEY:-}" ]; then
+      echo "API_SERVER_KEY is required when API_SERVER_HOST=$API_SERVER_HOST" >&2
+      exit 64
+    fi
+    ;;
+esac
+
+if [ -n "${HERMES_DASHBOARD:-}" ]; then
+  echo "HERMES_DASHBOARD is ignored by the Enclava API-only entrypoint" >&2
+fi
+unset HERMES_DASHBOARD
 
 # Seed config.yaml with api_server enabled if no config exists yet.
-# The dashboard (mounted as subapp on the api_server) lets users
-# configure LLM provider, platforms, and skills through the browser.
 if [ ! -f "$HERMES_HOME/config.yaml" ]; then
   mkdir -p "$HERMES_HOME"
   cp /opt/hermes/docker/enclava-config.yaml "$HERMES_HOME/config.yaml"
-  echo "Seeded config.yaml with Enclava defaults (api_server + dashboard)"
+  if [ -n "${HERMES_INFERENCE_PROVIDER:-}" ] || [ -n "${HERMES_INFERENCE_MODEL:-}" ]; then
+    {
+      printf '\nmodel:\n'
+      if [ -n "${HERMES_INFERENCE_PROVIDER:-}" ]; then
+        printf '  provider: %s\n' "$HERMES_INFERENCE_PROVIDER"
+      fi
+      if [ -n "${HERMES_INFERENCE_MODEL:-}" ]; then
+        printf '  default: %s\n' "$HERMES_INFERENCE_MODEL"
+      fi
+    } >> "$HERMES_HOME/config.yaml"
+  fi
+  echo "Seeded config.yaml with Enclava API defaults"
 fi
 
-exec /opt/hermes/docker/entrypoint.sh gateway
+mkdir -p "$HERMES_HOME"/{cron,sessions,logs,hooks,memories,skills,skins,plans,workspace,home}
+export HOME="${HOME:-$HERMES_HOME/home}"
+
+if [ ! -f "$HERMES_HOME/.env" ]; then
+  cp /opt/hermes/.env.example "$HERMES_HOME/.env"
+fi
+
+if [ ! -f "$HERMES_HOME/SOUL.md" ]; then
+  cp /opt/hermes/docker/SOUL.md "$HERMES_HOME/SOUL.md"
+fi
+
+if [ ! -f "$HERMES_HOME/auth.json" ] && [ -n "${HERMES_AUTH_JSON_BOOTSTRAP:-}" ]; then
+  printf '%s' "$HERMES_AUTH_JSON_BOOTSTRAP" > "$HERMES_HOME/auth.json"
+  chmod 600 "$HERMES_HOME/auth.json" 2>/dev/null || true
+fi
+
+if [ -d /opt/hermes/skills ]; then
+  python3 /opt/hermes/tools/skills_sync.py
+fi
+
+exec hermes gateway

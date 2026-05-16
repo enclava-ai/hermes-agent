@@ -15,20 +15,25 @@ RUN apt-get update \
     e2fsprogs \
     git \
     ripgrep \
+    tini \
     util-linux \
  && rm -rf /var/lib/apt/lists/*
 
 COPY . /opt/hermes
 WORKDIR /opt/hermes
 
-# Install core + dashboard + tinfoil deps for Enclava deployment
-RUN pip install --no-cache-dir ".[dashboard]" tinfoil
+# `homeassistant` supplies aiohttp, which the OpenAI-compatible API-server
+# platform adapter uses.
+RUN pip install --no-cache-dir ".[homeassistant]"
 
 RUN chmod +x /opt/hermes/docker/entrypoint.sh \
- && chmod +x /opt/hermes/docker/entrypoint-enclava-api.sh
+ && chmod +x /opt/hermes/docker/entrypoint-enclava-api.sh \
+ && install -m 0755 /opt/hermes/docker/enclava-wait-exec /usr/local/bin/enclava-wait-exec \
+ && mkdir -p /opt/data \
+ && chmod 1777 /opt/data
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=180s --retries=3 \
     CMD curl -f http://localhost:${API_SERVER_PORT:-8000}/health || exit 1
 
 VOLUME ["/opt/data"]
-ENTRYPOINT ["/opt/hermes/docker/entrypoint-enclava-api.sh"]
+ENTRYPOINT ["/usr/bin/tini", "-g", "--", "/opt/hermes/docker/entrypoint-enclava-api.sh"]
