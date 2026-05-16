@@ -87,7 +87,7 @@ jobs:
           IMAGE_TAG="$(printf '%s\n' '${{ steps.meta.outputs.tags }}' | head -n1)"
           docker run --rm -d --name hermes-enclava-smoke \
             -p 18000:8000 \
-            -e HERMES_HOME=/opt/data \
+            -e HERMES_HOME=/state/data \
             -e API_SERVER_KEY=test-secret-123456789 \
             -e HERMES_INFERENCE_PROVIDER=openrouter \
             -e HERMES_INFERENCE_MODEL=openai/gpt-4o-mini \

@@ -50,6 +50,7 @@ def test_enclava_package_uses_state_directly_without_app_bind_mounts():
     dockerfile = (ROOT / "Dockerfile.enclava").read_text()
     entrypoint = (ROOT / "docker/entrypoint-enclava-api.sh").read_text()
     docs = (ROOT / "docs/ENCLAVA_PLATFORM.md").read_text()
+    workflow = (ROOT / ".github/workflows/enclava-build.yml").read_text()
 
     assert descriptor["storage"]["paths"] == []
     assert "HERMES_HOME=/state/data" in dockerfile
@@ -57,6 +58,7 @@ def test_enclava_package_uses_state_directly_without_app_bind_mounts():
     assert "/opt/data" not in dockerfile
     assert "/opt/data" not in entrypoint
     assert "/opt/data" not in docs
+    assert "HERMES_HOME=/opt/data" not in workflow
 
 
 def test_enclava_entrypoint_waits_under_cap_only_once():
