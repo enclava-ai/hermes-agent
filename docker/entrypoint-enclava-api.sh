@@ -23,6 +23,96 @@ if [ -n "${ENCLAVA_CONTAINER_NAME:-}" ] && [ -z "${HERMES_ENCLAVA_WAIT_EXEC_DONE
   exec /usr/local/bin/enclava-wait-exec "$0" "$@"
 fi
 
+: "${HERMES_CAP_CONFIG_DIRS:=/run/enclava/config /state/.enclava/config /data/.enclava/config}"
+if [ -z "${HERMES_CAP_CONFIG_WAIT_SECONDS+x}" ]; then
+  if [ -n "${ENCLAVA_CONTAINER_NAME:-}" ]; then
+    HERMES_CAP_CONFIG_WAIT_SECONDS=300
+  else
+    HERMES_CAP_CONFIG_WAIT_SECONDS=0
+  fi
+fi
+
+is_valid_env_key() {
+  case "$1" in
+    ''|[!A-Za-z_]*|*[!A-Za-z0-9_]*)
+      return 1
+      ;;
+  esac
+  return 0
+}
+
+first_cap_config_dir() {
+  for dir in $HERMES_CAP_CONFIG_DIRS; do
+    if [ -d "$dir" ]; then
+      printf '%s\n' "$dir"
+      return 0
+    fi
+  done
+  return 1
+}
+
+cap_config_ready_for_start() {
+  if [ -n "${API_SERVER_KEY:-}" ]; then
+    return 0
+  fi
+
+  case "$API_SERVER_HOST" in
+    0.0.0.0|::)
+      for dir in $HERMES_CAP_CONFIG_DIRS; do
+        if [ -f "$dir/API_SERVER_KEY" ]; then
+          return 0
+        fi
+      done
+      return 1
+      ;;
+  esac
+
+  for dir in $HERMES_CAP_CONFIG_DIRS; do
+    if [ -f "$dir/.ready" ]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+wait_for_cap_config() {
+  seconds="$HERMES_CAP_CONFIG_WAIT_SECONDS"
+  case "$seconds" in
+    ''|*[!0-9]*)
+      echo "HERMES_CAP_CONFIG_WAIT_SECONDS must be an integer" >&2
+      exit 1
+      ;;
+  esac
+  [ "$seconds" -gt 0 ] || return 0
+
+  elapsed=0
+  while [ "$elapsed" -lt "$seconds" ]; do
+    if cap_config_ready_for_start; then
+      return 0
+    fi
+    sleep 1
+    elapsed=$((elapsed + 1))
+  done
+
+  echo "CAP config was not ready after ${seconds}s; continuing with current environment" >&2
+}
+
+load_cap_config() {
+  dir="$(first_cap_config_dir || true)"
+  [ -n "${dir:-}" ] || return 0
+
+  for path in "$dir"/*; do
+    [ -f "$path" ] || continue
+    key="${path##*/}"
+    is_valid_env_key "$key" || continue
+    value="$(cat "$path")"
+    export "$key=$value"
+  done
+}
+
+wait_for_cap_config
+load_cap_config
+
 case "$API_SERVER_HOST" in
   0.0.0.0|::)
     if [ -z "${API_SERVER_KEY:-}" ]; then

@@ -78,6 +78,20 @@ def test_enclava_entrypoint_requires_api_key_for_public_bind():
     assert "API_SERVER_KEY is required" in entrypoint
 
 
+def test_enclava_entrypoint_loads_cap_config_before_api_key_guard():
+    entrypoint = (ROOT / "docker/entrypoint-enclava-api.sh").read_text()
+    docs = (ROOT / "docs/ENCLAVA_PLATFORM.md").read_text()
+
+    assert "HERMES_CAP_CONFIG_DIRS" in entrypoint
+    assert "/state/.enclava/config" in entrypoint
+    assert "wait_for_cap_config" in entrypoint
+    assert "load_cap_config" in entrypoint
+    api_key_guard = entrypoint.index("API_SERVER_KEY is required")
+    assert entrypoint.index("wait_for_cap_config") < api_key_guard
+    assert entrypoint.index("load_cap_config") < api_key_guard
+    assert "CAP config" in docs
+
+
 def test_enclava_entrypoint_does_not_delegate_to_standard_docker_entrypoint():
     entrypoint = (ROOT / "docker/entrypoint-enclava-api.sh").read_text()
 

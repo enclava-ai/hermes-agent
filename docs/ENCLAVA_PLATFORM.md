@@ -55,6 +55,11 @@ Hermes must run with:
 
 `HERMES_HOME` is respected by both the Enclava wrapper entrypoint and the inner Docker entrypoint; it is no longer only a documentation-level contract.
 
+When running under CAP, the entrypoint waits for confidential CAP config and
+exports valid keys from `/state/.enclava/config` before it validates
+`API_SERVER_KEY`. This lets `enclava deploy --set` and `--set-file` deliver the
+API key without exposing it in Kubernetes env vars.
+
 The health endpoint is:
 
 - `GET /health`
